@@ -1,0 +1,331 @@
+/* ── Spotify mini-player ──────────────────────────────────────────────── */
+
+.sp-card {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 100;
+  width: 300px;
+  background: rgba(16, 16, 20, 0.92);
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Blurred album-art background ─────────────────────────────────────── */
+.sp-bg-art {
+  position: absolute;
+  inset: -28px;
+  background: var(--album-bg) center / cover no-repeat;
+  filter: blur(22px) brightness(0.28) saturate(1.8);
+  z-index: 0;
+  animation: spBgIn 0.7s ease forwards;
+}
+
+@keyframes spBgIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Raise all content above the bg layer */
+.sp-logout,
+.sp-track-row,
+.sp-progress-row,
+.sp-controls {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Disconnect button ────────────────────────────────────────────────── */
+.sp-logout {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s;
+}
+.sp-logout:hover { color: #fff; }
+
+/* ── Track row ────────────────────────────────────────────────────────── */
+.sp-track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-right: 16px;
+}
+
+.sp-art-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  background: #222;
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.sp-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-title {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-artist {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-heart {
+  flex-shrink: 0;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.4);
+  transition: color 0.15s, transform 0.15s;
+}
+.sp-heart:hover { color: #fff; transform: scale(1.2); }
+.sp-heart--liked { color: #1db954; }
+
+/* ── Progress bar ─────────────────────────────────────────────────────── */
+.sp-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sp-time {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 9px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-bar-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+}
+
+.sp-bar-fill {
+  width: var(--pct, 0%);
+  height: 100%;
+  background: #1db954;
+  border-radius: 2px;
+  transition: width 0.9s linear;
+}
+
+.sp-scrubber {
+  position: absolute;
+  top: 50%;
+  left: var(--pct, 0%);
+  transform: translate(-50%, -50%) scale(0);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+
+.sp-bar-track:hover .sp-bar-fill { background: #1ed760; }
+.sp-bar-track:hover .sp-scrubber { transform: translate(-50%, -50%) scale(1); }
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+.sp-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.sp-controls > svg {
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: color 0.15s, transform 0.1s;
+  flex-shrink: 0;
+}
+.sp-controls > svg:hover {
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.sp-play-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #1db954;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 2px 10px rgba(29, 185, 84, 0.4);
+}
+.sp-play-btn:hover {
+  background: #1ed760;
+  transform: scale(1.07);
+}
+.sp-play-btn svg { color: #000; }
+
+/* ── Volume ───────────────────────────────────────────────────────────── */
+.sp-vol-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sp-vol-btn {
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.sp-vol-btn:hover { color: #fff; }
+
+.sp-vol-slider {
+  width: 0;
+  overflow: hidden;
+  transition: width 0.2s ease;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.sp-vol-wrap:hover .sp-vol-slider { width: 60px; }
+
+.sp-vol-fill {
+  width: 75%;
+  height: 100%;
+  background: #1db954;
+  border-radius: 2px;
+}
+
+/* ── Equalizer bars (no album art) ───────────────────────────────────── */
+.sp-eq {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 8px;
+}
+
+.sp-bar {
+  flex: 1;
+  background: #1db954;
+  border-radius: 2px 2px 0 0;
+  transform-origin: bottom;
+}
+
+.sp-bar-1 { animation: spEq 1s ease-in-out infinite; animation-delay: 0.0s; }
+.sp-bar-2 { animation: spEq 1s ease-in-out infinite; animation-delay: 0.2s; }
+.sp-bar-3 { animation: spEq 1s ease-in-out infinite; animation-delay: 0.4s; }
+.sp-bar-4 { animation: spEq 1s ease-in-out infinite; animation-delay: 0.15s; }
+
+.sp-eq--paused .sp-bar { animation-play-state: paused; }
+
+@keyframes spEq {
+  0%, 100% { transform: scaleY(0.2); }
+  50%       { transform: scaleY(1);   }
+}
+
+/* ── Connect screen ───────────────────────────────────────────────────── */
+.sp-card--connect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 22px 18px;
+}
+
+.sp-connect-logo { margin-bottom: 2px; }
+
+.sp-connect-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.sp-connect-sub {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  margin: 0 0 6px;
+}
+
+.sp-connect-btn {
+  background: #1db954;
+  border: none;
+  color: #000;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 7px 24px;
+  border-radius: 20px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: background 0.15s, transform 0.1s;
+}
+.sp-connect-btn:hover {
+  background: #1ed760;
+  transform: scale(1.04);
+}
+
+/* ── Info / setup screen ──────────────────────────────────────────────── */
+.sp-card--info {
+  padding: 14px 16px;
+}
+
+.sp-info-title {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.sp-info-body {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  line-height: 1.6;
+  margin: 0;
+}
+.sp-info-body code { color: #1db954; font-family: monospace; }
+.sp-info-body strong { color: rgba(255, 255, 255, 0.75); }
