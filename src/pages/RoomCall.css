@@ -169,6 +169,12 @@
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
+/* When fullscreened, drop the sidebar offset so the room fills the screen. */
+.rc:fullscreen {
+  left: 0;
+  width: 100%;
+}
+
 /* Header */
 .rc-header {
   display: flex;
