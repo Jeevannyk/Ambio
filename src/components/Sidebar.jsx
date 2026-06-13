@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, ListTodo, Video, User, Palette, Music, Shield, ShieldOff } from 'lucide-react';
+import { Home, ListTodo, Video, User, Palette, Music } from 'lucide-react';
 
 const NAV = [
   { to: '/',        label: 'Home',    icon: Home },
@@ -14,7 +14,7 @@ const NAV = [
  * label, hovering over the environment instead of a full-height bar.
  * Tools (Themes, Music) open overlay panels; nothing pushes content.
  */
-function Sidebar({ isAdmin, onToggleAdmin, themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
+function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
   return (
     <aside className="rail" aria-label="Navigation">
       <div className="rail-group">
@@ -55,14 +55,6 @@ function Sidebar({ isAdmin, onToggleAdmin, themesOpen, onToggleThemes, musicOpen
           <span className="rail-item-label">Music</span>
         </button>
 
-        <button
-          className={'rail-item' + (isAdmin ? ' rail-item--admin-on' : '')}
-          onClick={onToggleAdmin}
-          title={isAdmin ? 'Disable admin mode' : 'Enable admin mode'}
-        >
-          {isAdmin ? <Shield size={20} /> : <ShieldOff size={20} />}
-          <span className="rail-item-label">Admin</span>
-        </button>
       </div>
     </aside>
   );

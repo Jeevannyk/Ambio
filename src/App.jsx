@@ -16,7 +16,6 @@ import RoomCall from './pages/RoomCall';
 import './App.css';
 
 const THEME_KEY = 'react-todo-app.theme';
-const ADMIN_KEY = 'react-todo-app.isAdmin';
 
 const SCENES = [
   {
@@ -53,7 +52,6 @@ function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
   const [sceneIndex, setSceneIndex] = useState(0);
   const [customVideoId, setCustomVideoId] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem(ADMIN_KEY) === 'true');
   const [themesOpen, setThemesOpen] = useState(false);
   const [playerOpen, setPlayerOpen] = useState(false);
   const pomodoro = usePomodoro();
@@ -62,10 +60,6 @@ function App() {
     localStorage.setItem(THEME_KEY, theme);
     document.body.dataset.theme = theme;
   }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem(ADMIN_KEY, String(isAdmin));
-  }, [isAdmin]);
 
   const handleThemeToggle = (e) => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -94,8 +88,6 @@ function App() {
 
       <div className="app-shell">
         <Sidebar
-          isAdmin={isAdmin}
-          onToggleAdmin={() => setIsAdmin((v) => !v)}
           themesOpen={themesOpen}
           onToggleThemes={() => setThemesOpen((v) => !v)}
           musicOpen={playerOpen}
@@ -104,11 +96,11 @@ function App() {
 
         <main className="content-area">
           <Routes>
-            <Route path="/" element={<WelcomePage isAdmin={isAdmin} />} />
+            <Route path="/" element={<WelcomePage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/my-room" element={<MyRoomPage pomodoro={pomodoro} />} />
-            <Route path="/rooms" element={<RoomsPage isAdmin={isAdmin} />} />
-            <Route path="/rooms/:id" element={<RoomCall isAdmin={isAdmin} pomodoro={pomodoro} />} />
+            <Route path="/rooms" element={<RoomsPage />} />
+            <Route path="/rooms/:id" element={<RoomCall pomodoro={pomodoro} />} />
           </Routes>
         </main>
       </div>

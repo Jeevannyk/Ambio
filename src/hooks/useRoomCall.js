@@ -23,7 +23,7 @@ import Peer from 'peerjs';
 
 const SPEAK_THRESHOLD = 12;
 
-export function useRoomCall(roomId, displayName, isAdmin, initial = {}) {
+export function useRoomCall(roomId, displayName, initial = {}) {
   const initMic = initial.micOn ?? true;
   const initCam = initial.camOn ?? true;
   const [status, setStatus] = useState('connecting'); // connecting | live | error | ended
@@ -418,7 +418,7 @@ export function useRoomCall(roomId, displayName, isAdmin, initial = {}) {
   return {
     status,
     isHost,
-    isAdmin: isAdmin || isHost,
+    isAdmin: isHost,
     localStream,
     micOn,
     camOn,

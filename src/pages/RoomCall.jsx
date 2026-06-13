@@ -27,7 +27,7 @@ function roomName(id) {
  * the live room (which starts the connection). Keying RoomLive on the joined
  * session id guarantees a clean hook lifecycle.
  */
-function RoomCall({ isAdmin, pomodoro }) {
+function RoomCall({ pomodoro }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState(null); // { name, micOn, camOn } | null
@@ -45,7 +45,6 @@ function RoomCall({ isAdmin, pomodoro }) {
   return (
     <RoomLive
       id={id}
-      isAdmin={isAdmin}
       pomodoro={pomodoro}
       displayName={session.name}
       initial={{ micOn: session.micOn, camOn: session.camOn }}
@@ -53,9 +52,9 @@ function RoomCall({ isAdmin, pomodoro }) {
   );
 }
 
-function RoomLive({ id, isAdmin, pomodoro, displayName, initial }) {
+function RoomLive({ id, pomodoro, displayName, initial }) {
   const navigate = useNavigate();
-  const call = useRoomCall(id, displayName, isAdmin, initial);
+  const call = useRoomCall(id, displayName, initial);
   const [panel, setPanel] = useState(null); // 'chat' | 'people' | null
   const [chatText, setChatText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
