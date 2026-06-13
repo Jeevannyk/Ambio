@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Plus, X, Users, LogIn, LogOut, Trash2, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Video, Plus, X, Users, LogIn, Trash2, Lock } from 'lucide-react';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
 
@@ -18,10 +19,12 @@ function uid() {
 }
 
 function RoomsPage({ isAdmin }) {
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState(loadRooms);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', max: 10 });
   const [error, setError] = useState('');
+  const [joinCode, setJoinCode] = useState('');
 
   useEffect(() => {
     localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
@@ -39,10 +42,12 @@ function RoomsPage({ isAdmin }) {
     setError('');
   };
 
-  const toggleJoin = (id) => {
-    setRooms((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, joined: !r.joined } : r))
-    );
+  const enterRoom = (id) => navigate(`/rooms/${id}`);
+
+  const joinByCode = (e) => {
+    e.preventDefault();
+    const code = joinCode.trim();
+    if (code) navigate(`/rooms/${code}`);
   };
 
   const deleteRoom = (id) => {
@@ -67,6 +72,16 @@ function RoomsPage({ isAdmin }) {
           </span>
         )}
       </div>
+
+      <form className="room-join-code" onSubmit={joinByCode}>
+        <input
+          className="room-input"
+          placeholder="Have an invite code? Paste it to join…"
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value)}
+        />
+        <button type="submit" className="room-submit-btn">Join</button>
+      </form>
 
       {showForm && isAdmin && (
         <form className="room-form" onSubmit={createRoom}>
@@ -107,7 +122,7 @@ function RoomsPage({ isAdmin }) {
       ) : (
         <div className="rooms-grid">
           {rooms.map((room) => (
-            <div key={room.id} className={'room-card' + (room.joined ? ' room-card--joined' : '')}>
+            <div key={room.id} className="room-card">
               <div className="room-card-top">
                 <div className="room-card-icon">
                   <Video size={20} />
@@ -124,11 +139,8 @@ function RoomsPage({ isAdmin }) {
                 <span className="room-card-max">
                   <Users size={13} /> Max {room.max}
                 </span>
-                <button
-                  className={'room-join-btn' + (room.joined ? ' room-join-btn--leave' : '')}
-                  onClick={() => toggleJoin(room.id)}
-                >
-                  {room.joined ? <><LogOut size={14} /> Leave</> : <><LogIn size={14} /> Join</>}
+                <button className="room-join-btn" onClick={() => enterRoom(room.id)}>
+                  <LogIn size={14} /> Join
                 </button>
               </div>
             </div>
