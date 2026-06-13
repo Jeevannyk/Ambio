@@ -61,6 +61,7 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
   const [linkError, setLinkError] = useState('');
   const [liked, setLiked] = useState(loadLiked);
   const [volume, setVolume] = useState(100); // 0–100, matches YouTube's default
+  const [showVolume, setShowVolume] = useState(false);
   // Live playback info streamed from the YouTube iframe API (postMessage).
   const [info, setInfo] = useState({ title: '', author: '', currentTime: 0, duration: 0, playerState: -1, muted: false });
   const iframeRef = useRef(null);
@@ -202,13 +203,38 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
             </div>
 
             <div className="sp2-controls">
-              <button
-                className="sp2-icon-btn"
-                onClick={() => command(info.muted ? 'unMute' : 'mute')}
-                aria-label={silent ? 'Unmute' : 'Mute'}
-              >
-                <VolIcon size={20} />
-              </button>
+              <div className="sp2-vol-wrap">
+                <button
+                  className={'sp2-icon-btn' + (showVolume ? ' sp2-icon-btn--active' : '')}
+                  onClick={() => setShowVolume((v) => !v)}
+                  aria-label="Volume"
+                  aria-expanded={showVolume}
+                >
+                  <VolIcon size={20} />
+                </button>
+                {showVolume && (
+                  <div className="sp2-volume-pop">
+                    <button
+                      className="sp2-volume-mute"
+                      onClick={() => command(info.muted ? 'unMute' : 'mute')}
+                      aria-label={silent ? 'Unmute' : 'Mute'}
+                    >
+                      <VolIcon size={16} />
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={silent ? 0 : volume}
+                      onChange={(e) => changeVolume(Number(e.target.value))}
+                      className="sp2-volume-slider"
+                      style={{ '--vol': `${silent ? 0 : volume}%` }}
+                      aria-label="Volume level"
+                    />
+                    <span className="sp2-volume-pct">{silent ? 0 : volume}</span>
+                  </div>
+                )}
+              </div>
 
               <div className="sp2-center">
                 <button className="sp2-round-btn" onClick={() => step(-1)} aria-label="Previous">
@@ -233,21 +259,6 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
               >
                 <Heart size={20} />
               </button>
-            </div>
-
-            <div className="sp2-volume">
-              <VolIcon size={16} className="sp2-volume-icon" />
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={silent ? 0 : volume}
-                onChange={(e) => changeVolume(Number(e.target.value))}
-                className="sp2-volume-slider"
-                style={{ '--vol': `${silent ? 0 : volume}%` }}
-                aria-label="Volume"
-              />
-              <span className="sp2-volume-pct">{silent ? 0 : volume}</span>
             </div>
 
             <div className="sp2-bar" onClick={handleSeek}>
