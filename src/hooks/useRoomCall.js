@@ -23,10 +23,19 @@ import Peer from 'peerjs';
 
 const SPEAK_THRESHOLD = 12;
 
-export function useRoomCall(roomId, displayName, initial = {}) {
+const ICE_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+  ],
+};
+
+export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
   const initMic = initial.micOn ?? true;
   const initCam = initial.camOn ?? true;
-  const [status, setStatus] = useState('connecting'); // connecting | live | error | ended
+  const [status, setStatus] = useState('connecting'); // connecting | live | error | ended | full
   const [isHost, setIsHost] = useState(false);
   const [localStream, setLocalStream] = useState(null);
   const [micOn, setMicOn] = useState(initMic);
@@ -48,6 +57,8 @@ export function useRoomCall(roomId, displayName, initial = {}) {
   const meta = useRef({ name: displayName, micOn: initMic, camOn: initCam, hand: false });
   const analysers = useRef(new Map()); // id -> {analyser, data}
   const audioCtx = useRef(null);
+  const maxRef = useRef(max);
+  const participantsRef = useRef([]); // mirrors participants state so callbacks always see fresh count
 
   const hostId = `ambio-room-${roomId}`;
 
@@ -55,9 +66,10 @@ export function useRoomCall(roomId, displayName, initial = {}) {
   const upsert = useCallback((id, patch) => {
     setParticipants((prev) => {
       const i = prev.findIndex((p) => p.id === id);
-      if (i === -1) return [...prev, { id, name: '', stream: null, micOn: true, camOn: true, hand: false, ...patch }];
-      const next = [...prev];
-      next[i] = { ...next[i], ...patch };
+      let next;
+      if (i === -1) next = [...prev, { id, name: '', stream: null, micOn: true, camOn: true, hand: false, ...patch }];
+      else { next = [...prev]; next[i] = { ...next[i], ...patch }; }
+      participantsRef.current = next;
       return next;
     });
   }, []);
@@ -68,7 +80,11 @@ export function useRoomCall(roomId, displayName, initial = {}) {
     dataConns.current.delete(id);
     mediaConns.current.delete(id);
     analysers.current.delete(id);
-    setParticipants((prev) => prev.filter((p) => p.id !== id));
+    setParticipants((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      participantsRef.current = next;
+      return next;
+    });
   }, []);
 
   /* ---- broadcast helper ---- */
@@ -102,6 +118,14 @@ export function useRoomCall(roomId, displayName, initial = {}) {
     (fromId, msg) => {
       switch (msg.t) {
         case 'hello':
+          // Host enforces room capacity before admitting the newcomer
+          if (peerRef.current?.id === hostId) {
+            const alreadyHere = participantsRef.current.some((p) => p.id === fromId);
+            if (!alreadyHere && participantsRef.current.length >= maxRef.current - 1) {
+              sendTo(fromId, { t: 'kick', reason: 'room_full' });
+              break;
+            }
+          }
           upsert(fromId, { name: msg.name, micOn: msg.micOn, camOn: msg.camOn, hand: msg.hand });
           break;
         case 'state':
@@ -135,7 +159,7 @@ export function useRoomCall(roomId, displayName, initial = {}) {
           break;
         case 'kick':
           cleanup();
-          setStatus('ended');
+          setStatus(msg.reason === 'room_full' ? 'full' : 'ended');
           break;
         default:
           break;
@@ -231,7 +255,7 @@ export function useRoomCall(roomId, displayName, initial = {}) {
       attachAnalyser('me', stream);
 
       // Try to claim the host id first.
-      const tryHost = new Peer(hostId, { debug: 0 });
+      const tryHost = new Peer(hostId, { debug: 0, config: ICE_CONFIG });
       tryHost.on('open', () => {
         if (cancelled) return tryHost.destroy();
         peerRef.current = tryHost;
@@ -244,7 +268,7 @@ export function useRoomCall(roomId, displayName, initial = {}) {
         if (err.type !== 'unavailable-id') return;
         // Host already exists — join as a normal member.
         tryHost.destroy();
-        const me = new Peer({ debug: 0 });
+        const me = new Peer({ debug: 0, config: ICE_CONFIG });
         me.on('open', (id) => {
           if (cancelled) return me.destroy();
           peerRef.current = me;
