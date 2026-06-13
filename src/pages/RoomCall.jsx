@@ -52,7 +52,7 @@ function RoomCall({ isAdmin, pomodoro }) {
   // Build the tile list: me first, then remotes.
   const tiles = [
     {
-      key: 'me',
+      tileId: 'me',
       stream: call.localStream,
       name: displayName,
       micOn: call.micOn,
@@ -63,7 +63,7 @@ function RoomCall({ isAdmin, pomodoro }) {
       speaking: call.speakingIds.includes('me'),
     },
     ...call.participants.map((p) => ({
-      key: p.id,
+      tileId: p.id,
       stream: p.stream,
       name: p.name || 'Connecting…',
       micOn: p.micOn,
@@ -120,8 +120,8 @@ function RoomCall({ isAdmin, pomodoro }) {
         {/* Video grid */}
         <div className="rc-stage">
           <div className="rc-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-            {tiles.map((t) => (
-              <VideoTile key={t.key} {...t} spotlight={t.speaking && total > 2} />
+            {tiles.map(({ tileId, ...t }) => (
+              <VideoTile key={tileId} {...t} spotlight={t.speaking && total > 2} />
             ))}
           </div>
 
