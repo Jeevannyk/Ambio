@@ -1,0 +1,15 @@
+# Render Blueprint — Ambio (Vite SPA static site)
+# Render auto-detects this file when you create a "Blueprint" from the repo,
+# or you can set the same values manually in a Static Site service.
+services:
+  - type: web
+    name: ambio
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    # Client-side routing: serve index.html for any path so /rooms/:id,
+    # /tasks, /my-room, etc. work on direct load and refresh.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
