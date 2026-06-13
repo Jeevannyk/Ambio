@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Volume2, VolumeX, Play, Pause, ArrowLeft, ArrowRight, Heart } from 'lucide-react';
+import { Volume2, Volume1, VolumeX, Play, Pause, ArrowLeft, ArrowRight, Heart } from 'lucide-react';
 import './YouTubePlayer.css';
 
 /*
@@ -60,6 +60,7 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
   const [linkInput, setLinkInput] = useState('');
   const [linkError, setLinkError] = useState('');
   const [liked, setLiked] = useState(loadLiked);
+  const [volume, setVolume] = useState(100); // 0–100, matches YouTube's default
   // Live playback info streamed from the YouTube iframe API (postMessage).
   const [info, setInfo] = useState({ title: '', author: '', currentTime: 0, duration: 0, playerState: -1, muted: false });
   const iframeRef = useRef(null);
@@ -155,6 +156,17 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
     command('seekTo', [((e.clientX - rect.left) / rect.width) * info.duration, true]);
   };
 
+  const changeVolume = (val) => {
+    setVolume(val);
+    command('setVolume', [val]);
+    // Dragging the slider up should take the player out of a muted state.
+    if (val > 0 && info.muted) command('unMute');
+    if (val === 0 && !info.muted) command('mute');
+  };
+
+  const silent = info.muted || volume === 0;
+  const VolIcon = silent ? VolumeX : volume < 50 ? Volume1 : Volume2;
+
   // playlist=<id> makes loop=1 work for VODs; enablejsapi powers the custom UI
   const embedUrl = `https://www.youtube.com/embed/${active.videoId}?autoplay=1&rel=0&loop=1&playlist=${active.videoId}&enablejsapi=1`;
 
@@ -193,9 +205,9 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
               <button
                 className="sp2-icon-btn"
                 onClick={() => command(info.muted ? 'unMute' : 'mute')}
-                aria-label={info.muted ? 'Unmute' : 'Mute'}
+                aria-label={silent ? 'Unmute' : 'Mute'}
               >
-                {info.muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                <VolIcon size={20} />
               </button>
 
               <div className="sp2-center">
@@ -221,6 +233,21 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
               >
                 <Heart size={20} />
               </button>
+            </div>
+
+            <div className="sp2-volume">
+              <VolIcon size={16} className="sp2-volume-icon" />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={silent ? 0 : volume}
+                onChange={(e) => changeVolume(Number(e.target.value))}
+                className="sp2-volume-slider"
+                style={{ '--vol': `${silent ? 0 : volume}%` }}
+                aria-label="Volume"
+              />
+              <span className="sp2-volume-pct">{silent ? 0 : volume}</span>
             </div>
 
             <div className="sp2-bar" onClick={handleSeek}>

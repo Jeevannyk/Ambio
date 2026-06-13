@@ -8,8 +8,8 @@ function loadRooms() {
   try {
     const saved = localStorage.getItem(ROOMS_KEY);
     return saved ? JSON.parse(saved) : [
-      { id: '1', name: 'Deep Work', description: 'Silent focus — no distractions.', max: 10, joined: false },
-      { id: '2', name: 'Study Hall', description: 'Group studying session.', max: 20, joined: false },
+      { id: '1', name: 'Deep Work', description: 'Silent focus — no distractions.', max: 5, joined: false },
+      { id: '2', name: 'Study Hall', description: 'Group studying session.', max: 5, joined: false },
     ];
   } catch { return []; }
 }
@@ -22,7 +22,7 @@ function RoomsPage() {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState(loadRooms);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', max: 10 });
+  const [form, setForm] = useState({ name: '', description: '', max: 5 });
   const [error, setError] = useState('');
   const [joinCode, setJoinCode] = useState('');
 
@@ -33,11 +33,12 @@ function RoomsPage() {
   const createRoom = (e) => {
     e.preventDefault();
     if (!form.name.trim()) { setError('Room name is required.'); return; }
+    const max = Math.min(6, Math.max(2, Number(form.max) || 5));
     setRooms((prev) => [
       ...prev,
-      { id: uid(), name: form.name.trim(), description: form.description.trim(), max: Number(form.max) || 10, joined: false },
+      { id: uid(), name: form.name.trim(), description: form.description.trim(), max, joined: false },
     ]);
-    setForm({ name: '', description: '', max: 10 });
+    setForm({ name: '', description: '', max: 5 });
     setShowForm(false);
     setError('');
   };
@@ -98,12 +99,13 @@ function RoomsPage() {
             <input
               type="number"
               min="2"
-              max="100"
+              max="6"
               className="room-input room-input--small"
               value={form.max}
               onChange={(e) => setForm((f) => ({ ...f, max: e.target.value }))}
             />
           </div>
+          <p className="room-form-hint">Best with 2–6 people — video quality drops with larger groups.</p>
           <button type="submit" className="room-submit-btn">Create Room</button>
         </form>
       )}
