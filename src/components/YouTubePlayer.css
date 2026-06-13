@@ -165,18 +165,60 @@
   fill: #1db954;
 }
 
-/* ── Volume ───────────────────────────────────────────────────────────── */
-.sp2-volume {
+/* ── Volume (pop-over, opens from the speaker icon) ───────────────────── */
+.sp2-vol-wrap {
+  position: relative;
+  display: flex;
+}
+
+.sp2-icon-btn--active {
+  color: #22c55e;
+}
+
+.sp2-volume-pop {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 12px;
+  width: 180px;
+  padding: 9px 12px;
+  background: #1f1f23;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  animation: sp2VolPop 0.15s ease-out;
 }
 
-.sp2-volume-icon {
-  color: #d4d4d8;
-  flex-shrink: 0;
+.sp2-volume-pop::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1f1f23;
 }
+
+@keyframes sp2VolPop {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.sp2-volume-mute {
+  flex-shrink: 0;
+  display: flex;
+  background: transparent;
+  border: none;
+  color: #d4d4d8;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sp2-volume-mute:hover { color: #fff; }
 
 .sp2-volume-slider {
   flex: 1;
