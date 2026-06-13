@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Mic, MicOff, Video as Cam, VideoOff, MonitorUp, MonitorX, Hand,
   Smile, MessageSquare, Users, PhoneOff, Send, Shield, VolumeX, UserX, Crown,
-  LayoutGrid, Monitor,
+  LayoutGrid, Monitor, Maximize, Minimize,
 } from 'lucide-react';
 import { useRoomCall } from '../hooks/useRoomCall';
 import { formatTime } from '../hooks/usePomodoro';
@@ -71,8 +71,25 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const [pinnedId, setPinnedId] = useState(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [toasts, setToasts] = useState([]); // {key, text}
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const chatEndRef = useRef(null);
+  const rcRef = useRef(null);
   const knownRef = useRef(new Map()); // id -> last known name (for join/leave toasts)
+
+  // Track fullscreen state (also catches Esc / browser-driven exits).
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      rcRef.current?.requestFullscreen?.();
+    }
+  };
 
   const pushToast = useCallback((text) => {
     const key = `${Date.now()}-${Math.random()}`;
@@ -188,7 +205,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   }
 
   return (
-    <div className="rc">
+    <div className="rc" ref={rcRef}>
       {/* Header */}
       <header className="rc-header">
         <div className="rc-title">
@@ -395,6 +412,10 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
         <button className={'rc-ctrl' + (panel === 'people' ? ' rc-ctrl--active' : '')} onClick={() => setPanel(panel === 'people' ? null : 'people')}>
           <Users size={20} />
           <span>People</span>
+        </button>
+        <button className="rc-ctrl" onClick={toggleFullscreen}>
+          {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+          <span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
         </button>
         <div className="rc-ctrl-wrap">
           <button className="rc-ctrl rc-ctrl--leave" onClick={() => setConfirmLeave((v) => !v)}>
