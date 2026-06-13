@@ -1,41 +1,87 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Mic, MicOff, Video as Cam, VideoOff, ArrowLeft } from 'lucide-react';
 
 const NAME_KEY = 'react-todo-app.displayName';
 
 /*
- * Zoom-style pre-join: live camera preview + name entry + mic/cam toggles.
- * Holds its own preview stream and STOPS it on join so the live room's
- * getUserMedia doesn't hit a "device in use" error.
+ * Zoom-style pre-join: live camera preview + name entry + mic/cam toggles +
+ * device pickers. Holds its own preview stream and STOPS it on join so the
+ * live room's getUserMedia doesn't hit a "device in use" error.
  */
 function PreJoin({ roomName, onJoin, onBack }) {
   const [name, setName] = useState(() => localStorage.getItem(NAME_KEY) || '');
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [blocked, setBlocked] = useState(false);
+  const [cameras, setCameras] = useState([]);
+  const [mics, setMics] = useState([]);
+  const [videoDeviceId, setVideoDeviceId] = useState('');
+  const [audioDeviceId, setAudioDeviceId] = useState('');
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
+  // Acquire (or re-acquire) the preview stream for the chosen devices.
+  const acquire = useCallback(async (vId, aId) => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: vId ? { deviceId: { exact: vId } } : true,
+        audio: aId ? { deviceId: { exact: aId } } : true,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      // Apply current toggle states to the fresh tracks.
+      stream.getAudioTracks().forEach((t) => (t.enabled = micOn));
+      stream.getVideoTracks().forEach((t) => (t.enabled = camOn));
+      setBlocked(false);
+      return stream;
+    } catch {
+      setBlocked(true);
+      return null;
+    }
+  }, [micOn, camOn]);
+
+  // Initial permission + device enumeration (labels only appear post-permission).
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const stream = await acquire('', '');
+      if (cancelled) {
+        stream?.getTracks().forEach((t) => t.stop());
+        return;
+      }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        if (cancelled) return;
+        const cams = devices.filter((d) => d.kind === 'videoinput');
+        const audios = devices.filter((d) => d.kind === 'audioinput');
+        setCameras(cams);
+        setMics(audios);
+        // Default to whatever the granted stream actually selected.
+        const vTrack = stream?.getVideoTracks()[0];
+        const aTrack = stream?.getAudioTracks()[0];
+        if (vTrack) setVideoDeviceId(vTrack.getSettings().deviceId || cams[0]?.deviceId || '');
+        if (aTrack) setAudioDeviceId(aTrack.getSettings().deviceId || audios[0]?.deviceId || '');
       } catch {
-        if (!cancelled) setBlocked(true);
+        /* enumerate not supported */
       }
     })();
     return () => {
       cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const changeCamera = async (id) => {
+    setVideoDeviceId(id);
+    await acquire(id, audioDeviceId);
+  };
+
+  const changeMic = async (id) => {
+    setAudioDeviceId(id);
+    await acquire(videoDeviceId, id);
+  };
 
   const toggleMic = () => {
     const next = !micOn;
@@ -56,7 +102,7 @@ function PreJoin({ roomName, onJoin, onBack }) {
     // Release the preview camera/mic before the live room acquires them.
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    onJoin(trimmed, { micOn, camOn });
+    onJoin(trimmed, { micOn, camOn, videoDeviceId, audioDeviceId });
   };
 
   const initial = (name || '?').trim().charAt(0).toUpperCase();
@@ -109,6 +155,31 @@ function PreJoin({ roomName, onJoin, onBack }) {
             Camera / mic is blocked. You can still join, but allow access in your
             browser to be seen and heard.
           </p>
+        )}
+
+        {!blocked && (cameras.length > 1 || mics.length > 1) && (
+          <div className="prejoin-devices">
+            {cameras.length > 1 && (
+              <label className="prejoin-device">
+                <Cam size={14} />
+                <select value={videoDeviceId} onChange={(e) => changeCamera(e.target.value)}>
+                  {cameras.map((c, i) => (
+                    <option key={c.deviceId} value={c.deviceId}>{c.label || `Camera ${i + 1}`}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {mics.length > 1 && (
+              <label className="prejoin-device">
+                <Mic size={14} />
+                <select value={audioDeviceId} onChange={(e) => changeMic(e.target.value)}>
+                  {mics.map((m, i) => (
+                    <option key={m.deviceId} value={m.deviceId}>{m.label || `Microphone ${i + 1}`}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
         )}
 
         <input

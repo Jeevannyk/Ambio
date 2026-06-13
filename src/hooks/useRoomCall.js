@@ -29,6 +29,12 @@ const ICE_CONFIG = {
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:global.stun.twilio.com:3478' },
+    // Free public TURN relay (OpenRelay) — lets peers on restrictive/symmetric
+    // NATs connect when a direct path fails. Shared & rate-limited; for heavy
+    // use swap in your own Metered/Twilio TURN credentials.
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ],
 };
 
@@ -229,12 +235,18 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
     let cancelled = false;
 
     async function start() {
+      const videoConstraint = initial.videoDeviceId
+        ? { deviceId: { exact: initial.videoDeviceId } }
+        : true;
+      const audioConstraint = initial.audioDeviceId
+        ? { deviceId: { exact: initial.audioDeviceId } }
+        : true;
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: audioConstraint });
       } catch {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
           setCamOn(false);
           meta.current.camOn = false;
         } catch {

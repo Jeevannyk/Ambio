@@ -806,9 +806,127 @@
   font-size: 0.62rem;
 }
 
+/* Join / leave toasts */
+.rc-toasts {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.rc-toast {
+  background: rgba(17, 20, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  animation: toastIn 0.25s ease-out;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Leave confirmation popover */
+.rc-leave-pop {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2430;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.85rem;
+  width: 190px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.rc-leave-pop p {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.rc-leave-pop-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rc-leave-pop-actions button {
+  flex: 1;
+  padding: 0.45rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.rc-leave-pop-actions button:hover { background: rgba(255, 255, 255, 0.16); }
+
+.rc-leave-pop-confirm {
+  background: #ef4444 !important;
+}
+
+.rc-leave-pop-confirm:hover { background: #dc2626 !important; }
+
+/* Pre-join device pickers */
+.prejoin-devices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.prejoin-device {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #1f2430;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.prejoin-device select {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.prejoin-device select option {
+  background: #1f2430;
+  color: #fff;
+}
+
 /* Join-by-code row on Rooms page */
 .room-join-code {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+}
+
+.room-form-hint {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
 }

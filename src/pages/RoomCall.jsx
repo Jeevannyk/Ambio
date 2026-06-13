@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Mic, MicOff, Video as Cam, VideoOff, MonitorUp, MonitorX, Hand,
@@ -51,7 +51,12 @@ function RoomCall({ pomodoro }) {
       info={info}
       pomodoro={pomodoro}
       displayName={session.name}
-      initial={{ micOn: session.micOn, camOn: session.camOn }}
+      initial={{
+        micOn: session.micOn,
+        camOn: session.camOn,
+        videoDeviceId: session.videoDeviceId,
+        audioDeviceId: session.audioDeviceId,
+      }}
     />
   );
 }
@@ -64,7 +69,39 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const [showEmoji, setShowEmoji] = useState(false);
   const [viewMode, setViewMode] = useState('gallery'); // 'gallery' | 'speaker'
   const [pinnedId, setPinnedId] = useState(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [toasts, setToasts] = useState([]); // {key, text}
   const chatEndRef = useRef(null);
+  const knownRef = useRef(new Map()); // id -> last known name (for join/leave toasts)
+
+  const pushToast = useCallback((text) => {
+    const key = `${Date.now()}-${Math.random()}`;
+    setToasts((t) => [...t, { key, text }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.key !== key)), 3500);
+  }, []);
+
+  // Announce joins/leaves once a participant's name is known.
+  useEffect(() => {
+    const known = knownRef.current;
+    const currentIds = new Set();
+    call.participants.forEach((p) => {
+      currentIds.add(p.id);
+      const name = p.name && p.name !== 'Connecting…' ? p.name : null;
+      if (name && !known.has(p.id)) {
+        known.set(p.id, name);
+        pushToast(`${name} joined`);
+      } else if (name) {
+        known.set(p.id, name);
+      }
+    });
+    // Anyone we knew about who's now gone has left.
+    [...known.keys()].forEach((kid) => {
+      if (!currentIds.has(kid)) {
+        pushToast(`${known.get(kid)} left`);
+        known.delete(kid);
+      }
+    });
+  }, [call.participants, pushToast]);
 
   useEffect(() => {
     if (call.status === 'ended') navigate('/rooms');
@@ -244,6 +281,13 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
               <span key={r.key} className="rc-reaction">{r.emoji}</span>
             ))}
           </div>
+
+          {/* Join / leave toasts */}
+          <div className="rc-toasts">
+            {toasts.map((t) => (
+              <div key={t.key} className="rc-toast">{t.text}</div>
+            ))}
+          </div>
         </div>
 
         {/* Side panel */}
@@ -352,10 +396,21 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
           <Users size={20} />
           <span>People</span>
         </button>
-        <button className="rc-ctrl rc-ctrl--leave" onClick={call.leave}>
-          <PhoneOff size={20} />
-          <span>Leave</span>
-        </button>
+        <div className="rc-ctrl-wrap">
+          <button className="rc-ctrl rc-ctrl--leave" onClick={() => setConfirmLeave((v) => !v)}>
+            <PhoneOff size={20} />
+            <span>Leave</span>
+          </button>
+          {confirmLeave && (
+            <div className="rc-leave-pop">
+              <p>Leave this room?</p>
+              <div className="rc-leave-pop-actions">
+                <button onClick={() => setConfirmLeave(false)}>Cancel</button>
+                <button className="rc-leave-pop-confirm" onClick={call.leave}>Leave</button>
+              </div>
+            </div>
+          )}
+        </div>
       </footer>
     </div>
   );
