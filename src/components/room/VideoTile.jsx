@@ -5,7 +5,7 @@ import { MicOff, Hand, MonitorUp } from 'lucide-react';
  * One participant cell. Attaches the MediaStream to a <video>; shows an
  * avatar fallback when the camera is off. Local tile is muted + mirrored.
  */
-function VideoTile({ stream, name, micOn, camOn, hand, speaking, isLocal, sharing, spotlight }) {
+function VideoTile({ stream, name, micOn, camOn, hand, speaking, isLocal, sharing, spotlight, thumb, onClick }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -15,7 +15,16 @@ function VideoTile({ stream, name, micOn, camOn, hand, speaking, isLocal, sharin
   const initial = (name || '?').trim().charAt(0).toUpperCase();
 
   return (
-    <div className={'vtile' + (speaking ? ' vtile--speaking' : '') + (spotlight ? ' vtile--spotlight' : '')}>
+    <div
+      className={
+        'vtile' +
+        (speaking ? ' vtile--speaking' : '') +
+        (spotlight ? ' vtile--spotlight' : '') +
+        (thumb ? ' vtile--thumb' : '')
+      }
+      onClick={onClick}
+      style={onClick ? { cursor: 'pointer' } : undefined}
+    >
       <video
         ref={ref}
         autoPlay

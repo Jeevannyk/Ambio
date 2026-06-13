@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Mic, MicOff, Video as Cam, VideoOff, MonitorUp, MonitorX, Hand,
   Smile, MessageSquare, Users, PhoneOff, Send, Shield, VolumeX, UserX, Crown,
+  LayoutGrid, Monitor,
 } from 'lucide-react';
 import { useRoomCall } from '../hooks/useRoomCall';
 import { formatTime } from '../hooks/usePomodoro';
@@ -13,29 +14,31 @@ import './RoomCall.css';
 const ROOMS_KEY = 'react-todo-app.rooms';
 const EMOJIS = ['👍', '❤️', '🎉', '😂', '🔥', '👏'];
 
-function roomName(id) {
+function roomInfo(id) {
   try {
     const rooms = JSON.parse(localStorage.getItem(ROOMS_KEY)) || [];
-    return rooms.find((r) => r.id === id)?.name || 'Focus Room';
+    const r = rooms.find((x) => x.id === id);
+    return { name: r?.name || 'Focus Room', max: r?.max ?? Infinity };
   } catch {
-    return 'Focus Room';
+    return { name: 'Focus Room', max: Infinity };
   }
 }
 
 /*
  * Gate: show the pre-join screen until the user enters a name, then mount
- * the live room (which starts the connection). Keying RoomLive on the joined
- * session id guarantees a clean hook lifecycle.
+ * the live room. Keying RoomLive on the joined session id guarantees a
+ * clean hook lifecycle.
  */
 function RoomCall({ pomodoro }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState(null); // { name, micOn, camOn } | null
+  const info = roomInfo(id);
 
   if (!session) {
     return (
       <PreJoin
-        roomName={roomName(id)}
+        roomName={info.name}
         onJoin={(name, prefs) => setSession({ name, ...prefs })}
         onBack={() => navigate('/rooms')}
       />
@@ -45,6 +48,7 @@ function RoomCall({ pomodoro }) {
   return (
     <RoomLive
       id={id}
+      info={info}
       pomodoro={pomodoro}
       displayName={session.name}
       initial={{ micOn: session.micOn, camOn: session.camOn }}
@@ -52,12 +56,14 @@ function RoomCall({ pomodoro }) {
   );
 }
 
-function RoomLive({ id, pomodoro, displayName, initial }) {
+function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const navigate = useNavigate();
-  const call = useRoomCall(id, displayName, initial);
+  const call = useRoomCall(id, displayName, info.max, initial);
   const [panel, setPanel] = useState(null); // 'chat' | 'people' | null
   const [chatText, setChatText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [viewMode, setViewMode] = useState('gallery'); // 'gallery' | 'speaker'
+  const [pinnedId, setPinnedId] = useState(null);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -68,15 +74,22 @@ function RoomLive({ id, pomodoro, displayName, initial }) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [call.messages, panel]);
 
-  // Host streams the shared Pomodoro to the room.
+  // Host broadcasts Pomodoro to the room.
   useEffect(() => {
     if (!call.isHost || !pomodoro) return;
     call.broadcastPomodoro({ mode: pomodoro.mode, secondsLeft: pomodoro.secondsLeft, running: pomodoro.running });
   }, [call.isHost, pomodoro?.mode, pomodoro?.secondsLeft, pomodoro?.running]); // eslint-disable-line
 
+  // Clear pin if pinned person leaves.
+  useEffect(() => {
+    if (pinnedId && !call.participants.find((p) => p.id === pinnedId) && pinnedId !== 'me') {
+      setPinnedId(null);
+    }
+  }, [call.participants, pinnedId]);
+
   const timer = call.isHost ? pomodoro : call.remotePomodoro;
 
-  // Build the tile list: me first, then remotes.
+  // Tile list: me first, then remotes.
   const tiles = [
     {
       tileId: 'me',
@@ -105,6 +118,12 @@ function RoomLive({ id, pomodoro, displayName, initial }) {
   const total = tiles.length;
   const cols = total <= 1 ? 1 : total <= 4 ? 2 : 3;
 
+  // Speaker view: pinned > active speaker > first tile
+  const activeSpeakerId = call.speakingIds.find((sid) => sid !== null);
+  const mainTileId = pinnedId || activeSpeakerId || tiles[0]?.tileId;
+  const mainTile = tiles.find((t) => t.tileId === mainTileId) || tiles[0];
+  const stripTiles = tiles.filter((t) => t !== mainTile);
+
   const submitChat = (e) => {
     e.preventDefault();
     call.sendChat(chatText);
@@ -121,17 +140,45 @@ function RoomLive({ id, pomodoro, displayName, initial }) {
     );
   }
 
+  if (call.status === 'full') {
+    return (
+      <div className="rc-error">
+        <h2>Room is full</h2>
+        <p>This room has reached its {info.max}-participant limit. Try again later or join a different room.</p>
+        <button className="rc-leave-btn" onClick={() => navigate('/rooms')}>Back to Rooms</button>
+      </div>
+    );
+  }
+
   return (
     <div className="rc">
       {/* Header */}
       <header className="rc-header">
         <div className="rc-title">
-          <h2>{roomName(id)}</h2>
+          <h2>{info.name}</h2>
           <span className={'rc-status rc-status--' + call.status}>
             {call.status === 'connecting' ? 'Connecting…' : 'Live'}
           </span>
           {call.isHost && <span className="rc-host-badge"><Crown size={12} /> Host</span>}
         </div>
+
+        <div className="rc-view-toggle">
+          <button
+            className={viewMode === 'gallery' ? 'active' : ''}
+            onClick={() => setViewMode('gallery')}
+            title="Gallery view"
+          >
+            <LayoutGrid size={14} /> Gallery
+          </button>
+          <button
+            className={viewMode === 'speaker' ? 'active' : ''}
+            onClick={() => setViewMode('speaker')}
+            title="Speaker view"
+          >
+            <Monitor size={14} /> Speaker
+          </button>
+        </div>
+
         {timer && (
           <div className="rc-timer">
             <span className="rc-timer-mode">{timer.mode === 'focus' ? 'Focus' : timer.mode === 'short' ? 'Break' : 'Long Break'}</span>
@@ -139,18 +186,57 @@ function RoomLive({ id, pomodoro, displayName, initial }) {
           </div>
         )}
         <div className="rc-invite">
-          <span>Invite code: <strong>{id.slice(0, 8)}</strong></span>
+          <span>Invite: <strong>{id.slice(0, 8)}</strong></span>
         </div>
       </header>
 
       <div className="rc-body">
-        {/* Video grid */}
+        {/* Video area */}
         <div className="rc-stage">
-          <div className="rc-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-            {tiles.map(({ tileId, ...t }) => (
-              <VideoTile key={tileId} {...t} spotlight={t.speaking && total > 2} />
-            ))}
-          </div>
+          {viewMode === 'gallery' ? (
+            <div className="rc-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+              {tiles.map(({ tileId, ...t }) => (
+                <VideoTile
+                  key={tileId}
+                  {...t}
+                  spotlight={t.speaking && total > 2}
+                  onClick={() => { setPinnedId(tileId); setViewMode('speaker'); }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rc-speaker-layout">
+              <div className="rc-speaker-main">
+                {mainTile && (
+                  <VideoTile
+                    key={mainTile.tileId}
+                    stream={mainTile.stream}
+                    name={mainTile.name}
+                    micOn={mainTile.micOn}
+                    camOn={mainTile.camOn}
+                    hand={mainTile.hand}
+                    sharing={mainTile.sharing}
+                    isLocal={mainTile.isLocal}
+                    speaking={mainTile.speaking}
+                  />
+                )}
+              </div>
+              {stripTiles.length > 0 && (
+                <div className="rc-strip">
+                  {stripTiles.map(({ tileId, ...t }) => (
+                    <div
+                      key={tileId}
+                      className={'rc-strip-item' + (tileId === pinnedId ? ' rc-strip-item--pinned' : '')}
+                      onClick={() => setPinnedId(pinnedId === tileId ? null : tileId)}
+                      title={pinnedId === tileId ? 'Unpin' : 'Pin to main view'}
+                    >
+                      <VideoTile {...t} thumb />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Floating reactions */}
           <div className="rc-reactions">
