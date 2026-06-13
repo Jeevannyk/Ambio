@@ -12,8 +12,8 @@
 /build
 /dist
 
-# large video files
-/public/videos
+# 4K source clips (compressed versions in /public/videos ARE committed)
+/.video-originals
 
 # misc
 .DS_Store
