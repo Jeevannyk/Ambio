@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Plus, X, Users, LogIn, Trash2, Lock } from 'lucide-react';
+import { Video, Plus, X, Users, LogIn, Trash2 } from 'lucide-react';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
 
@@ -18,7 +18,7 @@ function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function RoomsPage({ isAdmin }) {
+function RoomsPage() {
   const navigate = useNavigate();
   const [rooms, setRooms] = useState(loadRooms);
   const [showForm, setShowForm] = useState(false);
@@ -61,16 +61,10 @@ function RoomsPage({ isAdmin }) {
           <h2 className="rooms-title">Rooms</h2>
           <p className="rooms-sub">Join a focus room to work alongside others.</p>
         </div>
-        {isAdmin ? (
-          <button className="rooms-create-btn" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? <X size={16} /> : <Plus size={16} />}
-            {showForm ? 'Cancel' : 'Create Room'}
-          </button>
-        ) : (
-          <span className="rooms-locked-hint">
-            <Lock size={13} /> Only admins can create rooms
-          </span>
-        )}
+        <button className="rooms-create-btn" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? <X size={16} /> : <Plus size={16} />}
+          {showForm ? 'Cancel' : 'Create Room'}
+        </button>
       </div>
 
       <form className="room-join-code" onSubmit={joinByCode}>
@@ -83,7 +77,7 @@ function RoomsPage({ isAdmin }) {
         <button type="submit" className="room-submit-btn">Join</button>
       </form>
 
-      {showForm && isAdmin && (
+      {showForm && (
         <form className="room-form" onSubmit={createRoom}>
           <h3 className="room-form-title">New Room</h3>
           {error && <p className="room-form-error">{error}</p>}
@@ -117,7 +111,7 @@ function RoomsPage({ isAdmin }) {
       {rooms.length === 0 ? (
         <div className="rooms-empty">
           <Video size={40} opacity={0.3} />
-          <p>No rooms yet.{isAdmin ? ' Create one above.' : ' Ask an admin to create one.'}</p>
+          <p>No rooms yet. Create one above.</p>
         </div>
       ) : (
         <div className="rooms-grid">
@@ -127,11 +121,9 @@ function RoomsPage({ isAdmin }) {
                 <div className="room-card-icon">
                   <Video size={20} />
                 </div>
-                {isAdmin && (
-                  <button className="room-delete-btn" onClick={() => deleteRoom(room.id)} aria-label="Delete room">
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                <button className="room-delete-btn" onClick={() => deleteRoom(room.id)} aria-label="Delete room">
+                  <Trash2 size={14} />
+                </button>
               </div>
               <h3 className="room-card-name">{room.name}</h3>
               {room.description && <p className="room-card-desc">{room.description}</p>}

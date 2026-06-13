@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ListTodo, Video, Shield, ArrowRight } from 'lucide-react';
+import { ListTodo, Video, ArrowRight } from 'lucide-react';
 
-function WelcomePage({ isAdmin }) {
+function WelcomePage() {
   const navigate = useNavigate();
 
   return (
@@ -13,11 +13,6 @@ function WelcomePage({ isAdmin }) {
         <p className="welcome-sub">
           Stay productive. Manage your tasks, join rooms, and keep the flow going.
         </p>
-        {isAdmin && (
-          <span className="welcome-admin-badge">
-            <Shield size={13} /> Admin Mode Active
-          </span>
-        )}
       </div>
 
       <div className="welcome-cards">
@@ -38,7 +33,7 @@ function WelcomePage({ isAdmin }) {
           </div>
           <div className="welcome-card-body">
             <h3>Rooms</h3>
-            <p>Join focus rooms or {isAdmin ? 'create new ones.' : 'ask an admin to create one.'}</p>
+            <p>Create focus rooms and work alongside others.</p>
           </div>
           <ArrowRight size={18} className="welcome-card-arrow" />
         </button>
