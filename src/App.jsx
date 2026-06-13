@@ -12,6 +12,7 @@ import WelcomePage from './pages/WelcomePage';
 import TasksPage from './pages/TasksPage';
 import MyRoomPage from './pages/MyRoomPage';
 import RoomsPage from './pages/RoomsPage';
+import RoomCall from './pages/RoomCall';
 import './App.css';
 
 const THEME_KEY = 'react-todo-app.theme';
@@ -107,6 +108,7 @@ function App() {
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/my-room" element={<MyRoomPage pomodoro={pomodoro} />} />
             <Route path="/rooms" element={<RoomsPage isAdmin={isAdmin} />} />
+            <Route path="/rooms/:id" element={<RoomCall isAdmin={isAdmin} pomodoro={pomodoro} />} />
           </Routes>
         </main>
       </div>
