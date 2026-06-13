@@ -7,10 +7,10 @@ import {
 import { useRoomCall } from '../hooks/useRoomCall';
 import { formatTime } from '../hooks/usePomodoro';
 import VideoTile from '../components/room/VideoTile';
+import PreJoin from '../components/room/PreJoin';
 import './RoomCall.css';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
-const NAME_KEY = 'react-todo-app.displayName';
 const EMOJIS = ['👍', '❤️', '🎉', '😂', '🔥', '👏'];
 
 function roomName(id) {
@@ -22,12 +22,40 @@ function roomName(id) {
   }
 }
 
+/*
+ * Gate: show the pre-join screen until the user enters a name, then mount
+ * the live room (which starts the connection). Keying RoomLive on the joined
+ * session id guarantees a clean hook lifecycle.
+ */
 function RoomCall({ isAdmin, pomodoro }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [displayName] = useState(() => localStorage.getItem(NAME_KEY) || `Guest ${Math.floor(Math.random() * 900 + 100)}`);
+  const [session, setSession] = useState(null); // { name, micOn, camOn } | null
 
-  const call = useRoomCall(id, displayName, isAdmin);
+  if (!session) {
+    return (
+      <PreJoin
+        roomName={roomName(id)}
+        onJoin={(name, prefs) => setSession({ name, ...prefs })}
+        onBack={() => navigate('/rooms')}
+      />
+    );
+  }
+
+  return (
+    <RoomLive
+      id={id}
+      isAdmin={isAdmin}
+      pomodoro={pomodoro}
+      displayName={session.name}
+      initial={{ micOn: session.micOn, camOn: session.camOn }}
+    />
+  );
+}
+
+function RoomLive({ id, isAdmin, pomodoro, displayName, initial }) {
+  const navigate = useNavigate();
+  const call = useRoomCall(id, displayName, isAdmin, initial);
   const [panel, setPanel] = useState(null); // 'chat' | 'people' | null
   const [chatText, setChatText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
