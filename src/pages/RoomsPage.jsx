@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Plus, X, Users, LogIn, Trash2 } from 'lucide-react';
+import { Video, Plus, X, Users, LogIn, Trash2, Copy, Check } from 'lucide-react';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
+
+// Readable 6-char code (no ambiguous 0/O/1/I) — doubles as the room's id and
+// its connection key, so anyone with the code can reach the same peer room.
+function genCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
 
 function loadRooms() {
   try {
     const saved = localStorage.getItem(ROOMS_KEY);
     return saved ? JSON.parse(saved) : [
-      { id: '1', name: 'Deep Work', description: 'Silent focus — no distractions.', max: 5, joined: false },
-      { id: '2', name: 'Study Hall', description: 'Group studying session.', max: 5, joined: false },
+      { id: 'DEEP42', name: 'Deep Work', description: 'Silent focus — no distractions.', max: 5, joined: false },
+      { id: 'STUDY7', name: 'Study Hall', description: 'Group studying session.', max: 5, joined: false },
     ];
   } catch { return []; }
-}
-
-function uid() {
-  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function RoomsPage() {
@@ -25,6 +30,7 @@ function RoomsPage() {
   const [form, setForm] = useState({ name: '', description: '', max: 5 });
   const [error, setError] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const [copiedId, setCopiedId] = useState('');
 
   useEffect(() => {
     localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
@@ -36,19 +42,28 @@ function RoomsPage() {
     const max = Math.min(6, Math.max(2, Number(form.max) || 5));
     setRooms((prev) => [
       ...prev,
-      { id: uid(), name: form.name.trim(), description: form.description.trim(), max, joined: false },
+      { id: genCode(), name: form.name.trim(), description: form.description.trim(), max, joined: false },
     ]);
     setForm({ name: '', description: '', max: 5 });
     setShowForm(false);
     setError('');
   };
 
+  // Card "Join": go to the gate WITHOUT the code so it must be typed.
   const enterRoom = (id) => navigate(`/rooms/${id}`);
 
+  // Code box: they already typed the code, so pass it through to skip retyping.
   const joinByCode = (e) => {
     e.preventDefault();
-    const code = joinCode.trim();
-    if (code) navigate(`/rooms/${code}`);
+    const code = joinCode.trim().toUpperCase();
+    if (code) navigate(`/rooms/${code}`, { state: { code } });
+  };
+
+  const copyCode = (id) => {
+    navigator.clipboard?.writeText(id).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(''), 1500);
+    });
   };
 
   const deleteRoom = (id) => {
@@ -129,6 +144,15 @@ function RoomsPage() {
               </div>
               <h3 className="room-card-name">{room.name}</h3>
               {room.description && <p className="room-card-desc">{room.description}</p>}
+              <button
+                className="room-card-code"
+                onClick={() => copyCode(room.id)}
+                title="Copy room code"
+              >
+                <span className="room-card-code-label">Code</span>
+                <span className="room-card-code-value">{room.id}</span>
+                {copiedId === room.id ? <Check size={13} /> : <Copy size={13} />}
+              </button>
               <div className="room-card-footer">
                 <span className="room-card-max">
                   <Users size={13} /> Max {room.max}

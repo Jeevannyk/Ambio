@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Mic, MicOff, Video as Cam, VideoOff, MonitorUp, MonitorX, Hand,
   Smile, MessageSquare, Users, PhoneOff, Send, Shield, VolumeX, UserX, Crown,
@@ -9,6 +9,7 @@ import { useRoomCall } from '../hooks/useRoomCall';
 import { formatTime } from '../hooks/usePomodoro';
 import VideoTile from '../components/room/VideoTile';
 import PreJoin from '../components/room/PreJoin';
+import CodeGate from '../components/room/CodeGate';
 import './RoomCall.css';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
@@ -32,8 +33,25 @@ function roomInfo(id) {
 function RoomCall({ pomodoro }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [session, setSession] = useState(null); // { name, micOn, camOn } | null
+  const location = useLocation();
   const info = roomInfo(id);
+  // Auto-pass the gate only if they JUST typed the code on the Rooms page
+  // (so the invite-code flow doesn't ask them to type it twice).
+  const [verified, setVerified] = useState(
+    () => (location.state?.code || '').trim().toUpperCase() === String(id).trim().toUpperCase()
+  );
+  const [session, setSession] = useState(null); // { name, micOn, camOn } | null
+
+  if (!verified) {
+    return (
+      <CodeGate
+        roomName={info.name}
+        expected={id}
+        onVerified={() => setVerified(true)}
+        onBack={() => navigate('/rooms')}
+      />
+    );
+  }
 
   if (!session) {
     return (
@@ -240,7 +258,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
           </div>
         )}
         <div className="rc-invite">
-          <span>Invite: <strong>{id.slice(0, 8)}</strong></span>
+          <span>Code: <strong>{id}</strong></span>
         </div>
       </header>
 

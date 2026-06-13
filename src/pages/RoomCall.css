@@ -156,6 +156,29 @@
   cursor: not-allowed;
 }
 
+/* Code gate */
+.codegate-icon {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent, #6366f1);
+  margin-bottom: 0.25rem;
+}
+
+.prejoin-code {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+}
+
 /* ── Room call (Zoom-style) ───────────────────────────────────────────── */
 .rc {
   position: fixed;
@@ -164,10 +187,13 @@
   z-index: 80;
   display: flex;
   flex-direction: column;
-  background: #0b0d12;
+  background: transparent; /* let the ambient wallpaper show through */
   color: #f3f4f6;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
+
+/* In fullscreen there's no wallpaper behind, so keep it dark there. */
+.rc:fullscreen { background: #0b0d12; }
 
 /* When fullscreened, drop the sidebar offset so the room fills the screen. */
 .rc:fullscreen {
@@ -182,6 +208,9 @@
   gap: 1rem;
   padding: 0.9rem 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 13, 18, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .rc-title {
@@ -428,7 +457,9 @@
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  background: #11141a;
+  background: rgba(17, 20, 26, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .rc-panel-head {
@@ -601,7 +632,9 @@
   gap: 0.5rem;
   padding: 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: #0d1016;
+  background: rgba(13, 16, 22, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   flex-wrap: wrap;
 }
 
