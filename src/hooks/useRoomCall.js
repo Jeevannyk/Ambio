@@ -23,12 +23,14 @@ import Peer from 'peerjs';
 
 const SPEAK_THRESHOLD = 12;
 
-export function useRoomCall(roomId, displayName, isAdmin) {
+export function useRoomCall(roomId, displayName, isAdmin, initial = {}) {
+  const initMic = initial.micOn ?? true;
+  const initCam = initial.camOn ?? true;
   const [status, setStatus] = useState('connecting'); // connecting | live | error | ended
   const [isHost, setIsHost] = useState(false);
   const [localStream, setLocalStream] = useState(null);
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
+  const [micOn, setMicOn] = useState(initMic);
+  const [camOn, setCamOn] = useState(initCam);
   const [sharing, setSharing] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const [speakingIds, setSpeakingIds] = useState([]); // includes 'me'
@@ -43,7 +45,7 @@ export function useRoomCall(roomId, displayName, isAdmin) {
   const mediaConns = useRef(new Map()); // peerId -> MediaConnection
   const camTrackRef = useRef(null); // original camera video track (for un-share)
   const streamRef = useRef(null);
-  const meta = useRef({ name: displayName, micOn: true, camOn: true, hand: false });
+  const meta = useRef({ name: displayName, micOn: initMic, camOn: initCam, hand: false });
   const analysers = useRef(new Map()); // id -> {analyser, data}
   const audioCtx = useRef(null);
 
@@ -223,6 +225,9 @@ export function useRoomCall(roomId, displayName, isAdmin) {
       streamRef.current = stream;
       setLocalStream(stream);
       camTrackRef.current = stream.getVideoTracks()[0] || null;
+      // Apply the mic/cam choices made on the pre-join screen.
+      stream.getAudioTracks().forEach((t) => (t.enabled = meta.current.micOn));
+      stream.getVideoTracks().forEach((t) => (t.enabled = meta.current.camOn));
       attachAnalyser('me', stream);
 
       // Try to claim the host id first.

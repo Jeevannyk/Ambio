@@ -1,3 +1,161 @@
+/* ── Pre-join screen ──────────────────────────────────────────────────── */
+.prejoin {
+  position: fixed;
+  inset: 0;
+  left: calc(0.75rem + 76px);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b0d12;
+  color: #f3f4f6;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  padding: 1.5rem;
+}
+
+.prejoin-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.prejoin-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.prejoin-back:hover { color: #fff; }
+
+.prejoin-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.prejoin-sub {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.88rem;
+}
+
+.prejoin-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #181b22;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.prejoin-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror like a selfie view */
+}
+
+.prejoin-avatar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #2a2f3a, #181b22);
+}
+
+.prejoin-avatar span {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent, #6366f1);
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.prejoin-preview-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.6rem;
+}
+
+.prejoin-toggle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(31, 36, 48, 0.9);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.prejoin-toggle:hover { background: rgba(45, 52, 68, 0.95); }
+
+.prejoin-toggle--off {
+  background: #ef4444;
+}
+
+.prejoin-toggle--off:hover { background: #dc2626; }
+
+.prejoin-blocked {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #fbbf24;
+}
+
+.prejoin-input {
+  background: #1f2430;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.prejoin-input:focus {
+  outline: none;
+  border-color: var(--accent, #6366f1);
+}
+
+.prejoin-join {
+  background: var(--accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.prejoin-join:hover:not(:disabled) { background: var(--accent-hover, #4f46e5); }
+
+.prejoin-join:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ── Room call (Zoom-style) ───────────────────────────────────────────── */
 .rc {
   position: fixed;
