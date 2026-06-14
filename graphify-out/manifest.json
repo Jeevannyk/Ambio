@@ -1,0 +1,352 @@
+{
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\.claude\\skills\\run-react-todo-app\\driver.mjs": {
+    "mtime": 1781088548.2146766,
+    "ast_hash": "397bdd0cd96ad1cdde47556a9c8236ca",
+    "semantic_hash": "397bdd0cd96ad1cdde47556a9c8236ca"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\.vscode\\settings.json": {
+    "mtime": 1781433804.01658,
+    "ast_hash": "5cb4de4f427debaea947005aca3df04d",
+    "semantic_hash": "5cb4de4f427debaea947005aca3df04d"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\components.json": {
+    "mtime": 1781097285.629102,
+    "ast_hash": "8bc324a5e2c21e6a57ac38c82eb3f16a",
+    "semantic_hash": "8bc324a5e2c21e6a57ac38c82eb3f16a"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\jsconfig.json": {
+    "mtime": 1781097340.9634085,
+    "ast_hash": "c96b6082ab4ccf017691880bbb8a9752",
+    "semantic_hash": "c96b6082ab4ccf017691880bbb8a9752"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\package.json": {
+    "mtime": 1781332476.2385967,
+    "ast_hash": "3a4ddc89902b1e0ee62d382c63ba7714",
+    "semantic_hash": "3a4ddc89902b1e0ee62d382c63ba7714"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\manifest.json": {
+    "mtime": 1743815729.1317663,
+    "ast_hash": "d9d975cebe2ec20b6c652e1e4c12ccf0",
+    "semantic_hash": "d9d975cebe2ec20b6c652e1e4c12ccf0"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\App.jsx": {
+    "mtime": 1781420979.3919587,
+    "ast_hash": "646337cc788ec7473c5408ffa5136768",
+    "semantic_hash": "646337cc788ec7473c5408ffa5136768"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\App.test.js": {
+    "mtime": 1781074868.2650983,
+    "ast_hash": "a24c6f0921303b406bac798696a4b403",
+    "semantic_hash": "a24c6f0921303b406bac798696a4b403"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\audio\\audioReactor.js": {
+    "mtime": 1781431111.5120115,
+    "ast_hash": "31f4d5a1c2e00a6c3202b9270feb6aa7",
+    "semantic_hash": "31f4d5a1c2e00a6c3202b9270feb6aa7"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\BackgroundVideo.jsx": {
+    "mtime": 1781246970.80863,
+    "ast_hash": "771013a117297a06a3d6abc7dbaf638b",
+    "semantic_hash": "771013a117297a06a3d6abc7dbaf638b"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\CalendarDemo.jsx": {
+    "mtime": 1781103943.0752857,
+    "ast_hash": "260b447f1ba2b88c1e315e485cf40398",
+    "semantic_hash": "260b447f1ba2b88c1e315e485cf40398"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\PomodoroWidget.jsx": {
+    "mtime": 1781430655.4248126,
+    "ast_hash": "138c19ea3f0e59791bf43318b1230f3b",
+    "semantic_hash": "138c19ea3f0e59791bf43318b1230f3b"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\SceneSelector.jsx": {
+    "mtime": 1781268520.1417756,
+    "ast_hash": "ff999e4b1bb77326f681f56ea173334c",
+    "semantic_hash": "ff999e4b1bb77326f681f56ea173334c"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\Sidebar.jsx": {
+    "mtime": 1781359599.8121898,
+    "ast_hash": "44ebcff738ba5fa384da35e32363c7ed",
+    "semantic_hash": "44ebcff738ba5fa384da35e32363c7ed"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\SpotifyPlayer.jsx": {
+    "mtime": 1781196783.7640839,
+    "ast_hash": "6afefcafb6f8bd0bd3f24041033fef80",
+    "semantic_hash": "6afefcafb6f8bd0bd3f24041033fef80"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\TodoForm.jsx": {
+    "mtime": 1781097491.5371096,
+    "ast_hash": "c63d3c723646b89a057b4d901eba6026",
+    "semantic_hash": "c63d3c723646b89a057b4d901eba6026"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\TodoItem.jsx": {
+    "mtime": 1781102093.814142,
+    "ast_hash": "dcec5aceb8591651e01368e644034c49",
+    "semantic_hash": "dcec5aceb8591651e01368e644034c49"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\TodoList.jsx": {
+    "mtime": 1781084212.2386231,
+    "ast_hash": "ac051131966e2426525232119dc2e047",
+    "semantic_hash": "ac051131966e2426525232119dc2e047"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\Toolbar.jsx": {
+    "mtime": 1781097528.9444847,
+    "ast_hash": "df507d6ccae86b0025d979d084fc4f67",
+    "semantic_hash": "df507d6ccae86b0025d979d084fc4f67"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\UndoToast.jsx": {
+    "mtime": 1781097539.0840933,
+    "ast_hash": "23edb35963ad125ad85b99b5609153f2",
+    "semantic_hash": "23edb35963ad125ad85b99b5609153f2"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\VideoRoom.jsx": {
+    "mtime": 1781197215.0368934,
+    "ast_hash": "896e60702bdb449717dcd364bccabcfd",
+    "semantic_hash": "896e60702bdb449717dcd364bccabcfd"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\YouTubePlayer.jsx": {
+    "mtime": 1781434367.9062955,
+    "ast_hash": "5202eebbdf9397cf3aa9ece825b51f03",
+    "semantic_hash": "5202eebbdf9397cf3aa9ece825b51f03"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\YouTubeWallpaper.jsx": {
+    "mtime": 1781248453.9764833,
+    "ast_hash": "6a0eb51b651e86caef20ee5162fee4e0",
+    "semantic_hash": "6a0eb51b651e86caef20ee5162fee4e0"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\audio\\AudioReactiveBorder.jsx": {
+    "mtime": 1781431150.9313874,
+    "ast_hash": "91d81632c9247c2cc4c0b61448220730",
+    "semantic_hash": "91d81632c9247c2cc4c0b61448220730"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\audio\\AudioReactiveGlow.jsx": {
+    "mtime": 1781431143.1039662,
+    "ast_hash": "af3e1a508e311f1f84b7cd53f5f05403",
+    "semantic_hash": "af3e1a508e311f1f84b7cd53f5f05403"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\audio\\AudioVisualizer.jsx": {
+    "mtime": 1781431135.007241,
+    "ast_hash": "319a3d39a3bb7f0d1df41a33d14ed769",
+    "semantic_hash": "319a3d39a3bb7f0d1df41a33d14ed769"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\room\\CodeGate.jsx": {
+    "mtime": 1781364302.4905834,
+    "ast_hash": "304166546da19444e9038805dd8ca252",
+    "semantic_hash": "304166546da19444e9038805dd8ca252"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\room\\PreJoin.jsx": {
+    "mtime": 1781363351.9261656,
+    "ast_hash": "eb2612ee8d44e0b74bf65f07eeaa8031",
+    "semantic_hash": "eb2612ee8d44e0b74bf65f07eeaa8031"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\room\\VideoTile.jsx": {
+    "mtime": 1781363046.494594,
+    "ast_hash": "040f944897d21437c58d11410bafed7a",
+    "semantic_hash": "040f944897d21437c58d11410bafed7a"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\ui\\button.jsx": {
+    "mtime": 1781097375.9667335,
+    "ast_hash": "019cbf484cadec217be49bc6eecd7cb1",
+    "semantic_hash": "019cbf484cadec217be49bc6eecd7cb1"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\components\\ui\\calendar.jsx": {
+    "mtime": 1781097376.7688062,
+    "ast_hash": "92b8ce82c18898683859460ddb50f6f7",
+    "semantic_hash": "92b8ce82c18898683859460ddb50f6f7"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\hooks\\useAudioAnalyzer.js": {
+    "mtime": 1781431124.2091386,
+    "ast_hash": "299751e1034832a4ced2458e7d8ce9c1",
+    "semantic_hash": "299751e1034832a4ced2458e7d8ce9c1"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\hooks\\useAutoHideControls.js": {
+    "mtime": 1781419427.9575956,
+    "ast_hash": "27f8e92b70ddda6fb00a70e03eca550d",
+    "semantic_hash": "27f8e92b70ddda6fb00a70e03eca550d"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\hooks\\usePomodoro.js": {
+    "mtime": 1781248903.0383458,
+    "ast_hash": "09508ec0318e325b1f640aab14863b31",
+    "semantic_hash": "09508ec0318e325b1f640aab14863b31"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\hooks\\useRoomCall.js": {
+    "mtime": 1781363322.097275,
+    "ast_hash": "1c79ce19b24a156c7b8193b0bdcd1da9",
+    "semantic_hash": "1c79ce19b24a156c7b8193b0bdcd1da9"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\index.jsx": {
+    "mtime": 1781097025.6534708,
+    "ast_hash": "9fc5841375336fc175b49f8767a11383",
+    "semantic_hash": "9fc5841375336fc175b49f8767a11383"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\lib\\utils.js": {
+    "mtime": 1781097310.926339,
+    "ast_hash": "575fcc5822d626fbe3226e3112181b6c",
+    "semantic_hash": "575fcc5822d626fbe3226e3112181b6c"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\pages\\MyRoomPage.jsx": {
+    "mtime": 1781266907.1292763,
+    "ast_hash": "441e24ac7124bb54b50a3c15d83459a2",
+    "semantic_hash": "441e24ac7124bb54b50a3c15d83459a2"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\pages\\RoomCall.jsx": {
+    "mtime": 1781431407.9815202,
+    "ast_hash": "8a6a21ac9819c7f0c071797044b2573d",
+    "semantic_hash": "8a6a21ac9819c7f0c071797044b2573d"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\pages\\RoomsPage.jsx": {
+    "mtime": 1781364436.7712145,
+    "ast_hash": "9c7d114399d08fa6b5e4dabf80528b9f",
+    "semantic_hash": "9c7d114399d08fa6b5e4dabf80528b9f"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\pages\\TasksPage.jsx": {
+    "mtime": 1781246861.5097005,
+    "ast_hash": "53f9aba5eea3defd1f926a852f51ec2c",
+    "semantic_hash": "53f9aba5eea3defd1f926a852f51ec2c"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\pages\\WelcomePage.jsx": {
+    "mtime": 1781359683.469339,
+    "ast_hash": "cbbee17a7b4d045059bd8c7b1b9deb2e",
+    "semantic_hash": "cbbee17a7b4d045059bd8c7b1b9deb2e"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\reportWebVitals.js": {
+    "mtime": 1743815728.9858656,
+    "ast_hash": "240e2381f826a9bb84d178b29b7b9abe",
+    "semantic_hash": "240e2381f826a9bb84d178b29b7b9abe"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\setupTests.js": {
+    "mtime": 1743815729.0475786,
+    "ast_hash": "1a77571e1a8cf36018a41bcedf60db75",
+    "semantic_hash": "1a77571e1a8cf36018a41bcedf60db75"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\utils\\spotify.js": {
+    "mtime": 1781098451.6197574,
+    "ast_hash": "456f1bcc3b6254d3474f132e97cc9a65",
+    "semantic_hash": "456f1bcc3b6254d3474f132e97cc9a65"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\vite.config.js": {
+    "mtime": 1781333601.2246091,
+    "ast_hash": "270d5676fa328f061e796eacf5995404",
+    "semantic_hash": "270d5676fa328f061e796eacf5995404"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\.claude\\skills\\run-react-todo-app\\SKILL.md": {
+    "mtime": 1781089227.3698578,
+    "ast_hash": "0d9ad1596cb8a13ac23bc9f2034f4d00",
+    "semantic_hash": "0d9ad1596cb8a13ac23bc9f2034f4d00"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\README.md": {
+    "mtime": 1743815729.4207826,
+    "ast_hash": "33822368bfb3ad3de6fceb9cd76aa0dd",
+    "semantic_hash": "33822368bfb3ad3de6fceb9cd76aa0dd"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\index.html": {
+    "mtime": 1781110218.759349,
+    "ast_hash": "3d8539177313b68b37bbd034db78aeba",
+    "semantic_hash": "3d8539177313b68b37bbd034db78aeba"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\index.html": {
+    "mtime": 1743815728.547351,
+    "ast_hash": "ef8a02db437c74f2ecb0d88becc4b9d4",
+    "semantic_hash": "ef8a02db437c74f2ecb0d88becc4b9d4"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\robots.txt": {
+    "mtime": 1743815729.6252651,
+    "ast_hash": "fa1ded1ed7c11438a9b0385b1e112850",
+    "semantic_hash": "fa1ded1ed7c11438a9b0385b1e112850"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\render.yaml": {
+    "mtime": 1781343559.5623202,
+    "ast_hash": "3cd33adfe5f6eddd969af20f0c98429b",
+    "semantic_hash": "3cd33adfe5f6eddd969af20f0c98429b"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\.claude\\skills\\run-react-todo-app\\screenshot.png": {
+    "mtime": 1781188922.0367036,
+    "ast_hash": "6b3ccb7255f90bc64ab9cc21f2c99d1e",
+    "semantic_hash": "6b3ccb7255f90bc64ab9cc21f2c99d1e"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\Screenshot 2026-06-10 162320.png": {
+    "mtime": 1781088801.0472925,
+    "ast_hash": "6c5f0dbd38966aab2abc20abcf3abb4e",
+    "semantic_hash": "6c5f0dbd38966aab2abc20abcf3abb4e"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\logo192.png": {
+    "mtime": 1743815729.4819436,
+    "ast_hash": "33dbdd0177549353eeeb785d02c294af",
+    "semantic_hash": "33dbdd0177549353eeeb785d02c294af"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\logo512.png": {
+    "mtime": 1743815729.5396812,
+    "ast_hash": "917515db74ea8d1aee6a246cfbcc0b45",
+    "semantic_hash": "917515db74ea8d1aee6a246cfbcc0b45"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\src\\logo.svg": {
+    "mtime": 1743815729.5820649,
+    "ast_hash": "06e733283fa43d1dd57738cfc409adbd",
+    "semantic_hash": "06e733283fa43d1dd57738cfc409adbd"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\city-night-1.mp4": {
+    "mtime": 1781344315.8097396,
+    "ast_hash": "98048c7367a3cf3141b91ee0496eec5d",
+    "semantic_hash": "98048c7367a3cf3141b91ee0496eec5d"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\city-night-2.mp4": {
+    "mtime": 1781344320.0090456,
+    "ast_hash": "cd322f809a316c4ddb5c21fe88576ea3",
+    "semantic_hash": "cd322f809a316c4ddb5c21fe88576ea3"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\city-night-3.mp4": {
+    "mtime": 1781348494.189335,
+    "ast_hash": "d0ec57edd732291709e15379fd59d0d5",
+    "semantic_hash": "d0ec57edd732291709e15379fd59d0d5"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\city-night-4.mp4": {
+    "mtime": 1781348496.1255999,
+    "ast_hash": "941ce9e11eab5b05b52399c94676ddae",
+    "semantic_hash": "941ce9e11eab5b05b52399c94676ddae"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\forest-1.mp4": {
+    "mtime": 1781348524.0405872,
+    "ast_hash": "e3fd3ba55849453b36937bcbbd901702",
+    "semantic_hash": "e3fd3ba55849453b36937bcbbd901702"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\forest-2.mp4": {
+    "mtime": 1781348526.9686697,
+    "ast_hash": "3138539a3971cb86c398d80fb9e0beac",
+    "semantic_hash": "3138539a3971cb86c398d80fb9e0beac"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\forest-3.mp4": {
+    "mtime": 1781348531.1063516,
+    "ast_hash": "4ce83e5060dbc00507f57413d35b6587",
+    "semantic_hash": "4ce83e5060dbc00507f57413d35b6587"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\forest-4.mp4": {
+    "mtime": 1781348537.3022041,
+    "ast_hash": "ff1228e31843890afc22d528e0b94f0e",
+    "semantic_hash": "ff1228e31843890afc22d528e0b94f0e"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\ocean-1.mp4": {
+    "mtime": 1781348566.4828496,
+    "ast_hash": "e4391e2d7fd51d7f324b3562658f69b3",
+    "semantic_hash": "e4391e2d7fd51d7f324b3562658f69b3"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\ocean-2.mp4": {
+    "mtime": 1781348579.4716358,
+    "ast_hash": "c3f08643c0064cae637e7059889031e1",
+    "semantic_hash": "c3f08643c0064cae637e7059889031e1"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\ocean-3.mp4": {
+    "mtime": 1781348590.5342577,
+    "ast_hash": "420ce56e0b59b9a82ba03da42c44a2ef",
+    "semantic_hash": "420ce56e0b59b9a82ba03da42c44a2ef"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\ocean-4.mp4": {
+    "mtime": 1781348602.8777313,
+    "ast_hash": "9ad62707c834f87f83b39a96009b825d",
+    "semantic_hash": "9ad62707c834f87f83b39a96009b825d"
+  },
+  "C:\\Users\\jeeva\\git-workshop-24\\my workspace\\react\\react-todo-app\\public\\videos\\rainy-night.mp4": {
+    "mtime": 1781348622.6161287,
+    "ast_hash": "2caa41acb0dec685d2efde603ade67d0",
+    "semantic_hash": "2caa41acb0dec685d2efde603ade67d0"
+  }
+}
