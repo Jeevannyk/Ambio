@@ -5,12 +5,13 @@ import { POMODORO_MODES, formatTime } from '../hooks/usePomodoro';
 
 /*
  * Compact always-visible timer docked at the side, so the Pomodoro keeps
- * ticking (and stays visible) on every page. Hidden on /my-room where the
- * full card already shows it.
+ * ticking (and stays visible) on every page. Hidden on /my-room (the full
+ * card shows it) and inside a live room (the room header shows it, and the
+ * dock would overlap the video).
  */
 function PomodoroWidget({ pomodoro }) {
   const location = useLocation();
-  if (location.pathname === '/my-room') return null;
+  if (location.pathname === '/my-room' || /^\/rooms\/.+/.test(location.pathname)) return null;
 
   const { mode, secondsLeft, running, toggle } = pomodoro;
 

@@ -3,13 +3,15 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Mic, MicOff, Video as Cam, VideoOff, MonitorUp, MonitorX, Hand,
   Smile, MessageSquare, Users, PhoneOff, Send, Shield, VolumeX, UserX, Crown,
-  LayoutGrid, Monitor, Maximize, Minimize,
+  LayoutGrid, Monitor, Maximize, Minimize, Play, Pause,
 } from 'lucide-react';
 import { useRoomCall } from '../hooks/useRoomCall';
+import { useAutoHideControls } from '../hooks/useAutoHideControls';
 import { formatTime } from '../hooks/usePomodoro';
 import VideoTile from '../components/room/VideoTile';
 import PreJoin from '../components/room/PreJoin';
 import CodeGate from '../components/room/CodeGate';
+import AudioReactiveBorder from '../components/audio/AudioReactiveBorder';
 import './RoomCall.css';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
@@ -90,8 +92,9 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [toasts, setToasts] = useState([]); // {key, text}
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Auto-hide the top/bottom bars after 3s of inactivity (immersive mode).
+  const { visible: barsVisible, bindHover } = useAutoHideControls(3000);
   const chatEndRef = useRef(null);
-  const rcRef = useRef(null);
   const knownRef = useRef(new Map()); // id -> last known name (for join/leave toasts)
 
   // Track fullscreen state (also catches Esc / browser-driven exits).
@@ -105,7 +108,9 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
     if (document.fullscreenElement) {
       document.exitFullscreen?.();
     } else {
-      rcRef.current?.requestFullscreen?.();
+      // Fullscreen the whole page (not just the room) so the wallpaper and
+      // floating sidebar stay visible instead of a black backdrop.
+      document.documentElement.requestFullscreen?.();
     }
   };
 
@@ -223,9 +228,15 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   }
 
   return (
-    <div className="rc" ref={rcRef}>
+    <div className="rc">
+      {/* Audio-reactive neon frame (pulses subtly with the music) */}
+      <AudioReactiveBorder className="rc-arb" />
+
       {/* Header */}
-      <header className="rc-header">
+      <header
+        className={'rc-header' + (barsVisible ? '' : ' rc-header--hidden') + (panel ? ' rc-bar--panel' : '')}
+        {...bindHover}
+      >
         <div className="rc-title">
           <h2>{info.name}</h2>
           <span className={'rc-status rc-status--' + call.status}>
@@ -251,12 +262,23 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
           </button>
         </div>
 
-        {timer && (
+        {timer && (call.isHost ? (
+          <button
+            type="button"
+            className="rc-timer rc-timer--btn"
+            onClick={pomodoro.toggle}
+            title={pomodoro.running ? 'Pause focus timer' : 'Start focus timer'}
+          >
+            <span className="rc-timer-mode">{timer.mode === 'focus' ? 'Focus' : timer.mode === 'short' ? 'Break' : 'Long Break'}</span>
+            <span className="rc-timer-time">{formatTime(timer.secondsLeft)}</span>
+            {pomodoro.running ? <Pause size={13} /> : <Play size={13} />}
+          </button>
+        ) : (
           <div className="rc-timer">
             <span className="rc-timer-mode">{timer.mode === 'focus' ? 'Focus' : timer.mode === 'short' ? 'Break' : 'Long Break'}</span>
             <span className="rc-timer-time">{formatTime(timer.secondsLeft)}</span>
           </div>
-        )}
+        ))}
         <div className="rc-invite">
           <span>Code: <strong>{id}</strong></span>
         </div>
@@ -393,7 +415,10 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
       </div>
 
       {/* Control bar */}
-      <footer className="rc-controls">
+      <footer
+        className={'rc-controls' + (barsVisible ? '' : ' rc-controls--ghost') + (panel ? ' rc-bar--panel' : '')}
+        {...bindHover}
+      >
         <button className={'rc-ctrl' + (call.micOn ? '' : ' rc-ctrl--off')} onClick={call.toggleMic}>
           {call.micOn ? <Mic size={20} /> : <MicOff size={20} />}
           <span>{call.micOn ? 'Mute' : 'Unmute'}</span>
