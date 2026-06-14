@@ -192,25 +192,59 @@
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
-/* In fullscreen there's no wallpaper behind, so keep it dark there. */
-.rc:fullscreen { background: #0b0d12; }
-
-/* When fullscreened, drop the sidebar offset so the room fills the screen. */
-.rc:fullscreen {
-  left: 0;
-  width: 100%;
+/* Audio-reactive neon frame — sits just inside the room edges and pulses
+   subtly with the music (driven by the shared --a-volume var). */
+.arb.rc-arb {
+  inset: 6px;
+  border-radius: 18px;
+  z-index: 2;
 }
 
-/* Header */
+/* Header — floats transparently over the wallpaper, like the bottom toolbar.
+   Each child (badges, toggle, timer) carries its own subtle pill, so the bar
+   itself needs no fill, border, or blur. */
 .rc-header {
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 0.9rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(11, 13, 18, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* Float over the video so the stage fills the whole height (bigger video).
+     The video never resizes — only the bar fades on idle. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+/* While a side panel is open, keep the floating bars over the video area only
+   so they don't cover the panel's header / chat input. Compound selectors so
+   this reliably wins over the base .rc-controls { right: 0 } defined later. */
+.rc-header.rc-bar--panel,
+.rc-controls.rc-bar--panel {
+  right: 300px;
+}
+
+/* Auto-hide: top bar slides up and out after inactivity. */
+.rc-header--hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+/* Right-side header chips keep their size so they never crowd or overlap;
+   only the title (flex: 1, min-width: 0) shrinks. */
+.rc-view-toggle,
+.rc-timer,
+.rc-invite {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .rc-title {
@@ -228,6 +262,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 .rc-status {
@@ -240,6 +275,8 @@
   letter-spacing: 0.05em;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .rc-status::before {
@@ -260,19 +297,35 @@
   font-size: 0.7rem;
   font-weight: 700;
   color: #fbbf24;
-  background: rgba(251, 191, 36, 0.12);
+  background: rgba(251, 191, 36, 0.18);
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .rc-timer {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(99, 102, 241, 0.4);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Host's timer doubles as a play/pause control. */
+.rc-timer--btn {
+  cursor: pointer;
+  color: #fff;
+  font: inherit;
+  transition: background 0.15s;
+}
+
+.rc-timer--btn:hover {
+  background: rgba(99, 102, 241, 0.4);
 }
 
 .rc-timer-mode {
@@ -291,7 +344,8 @@
 
 .rc-invite {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.75);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 .rc-invite strong {
@@ -309,7 +363,7 @@
 .rc-stage {
   flex: 1;
   position: relative;
-  padding: 1rem;
+  padding: 0.5rem;
   min-width: 0;
   min-height: 0;
   overflow: hidden; /* a big tile must never cover the controls */
@@ -317,23 +371,24 @@
 
 .rc-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.5rem;
   width: 100%;
   height: 100%;
-  place-content: center;
-  place-items: center;
+  place-content: stretch;
+  place-items: stretch;
   grid-auto-rows: minmax(0, 1fr);
 }
 
-/* Video tile — capped so a single tile can't overflow the stage */
+/* Video tile — fills its grid cell so the video is as large as possible;
+   the <video> uses object-fit: cover, so it crops rather than letterboxes.
+   The stage is flex-bounded with overflow: hidden, so this can't push the
+   control bar. */
 .vtile {
   position: relative;
-  aspect-ratio: 16 / 9;
-  max-width: 100%;
-  max-height: 100%;
-  min-height: 0;
   width: 100%;
-  margin: auto;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   background: #181b22;
   border-radius: 14px;
   overflow: hidden;
@@ -625,17 +680,34 @@
 }
 
 /* Control bar */
+/* Control bar — floats transparently; the icons/labels carry their own
+   shadows for legibility, like the header. */
 .rc-controls {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(13, 16, 22, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   flex-wrap: wrap;
+  /* Float over the bottom of the video instead of taking layout space. */
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+/* Auto-hide: bottom bar stays faintly visible (15%) while inactive for
+   discoverability, then animates back to full on any movement. */
+.rc-controls--ghost {
+  opacity: 0.15;
+  pointer-events: none;
 }
 
 .rc-ctrl-wrap {
@@ -652,11 +724,17 @@
   background: transparent;
   border: none;
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 0.65rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* Drop-shadow keeps the icons crisp when floating over bright wallpaper. */
+.rc-ctrl svg {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
 .rc-ctrl:hover {
@@ -744,10 +822,12 @@
 /* View mode toggle (Gallery / Speaker) */
 .rc-view-toggle {
   display: flex;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(20, 24, 34, 0.45);
   border-radius: 8px;
   padding: 3px;
   gap: 2px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .rc-view-toggle button {

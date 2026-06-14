@@ -1,0 +1,65 @@
+/*
+ * Shared audio-reactive styles. Continuous energy values come from CSS custom
+ * properties set by audioReactor every frame:
+ *   --a-volume  overall energy (0..1)
+ *   --a-bass / --a-mids / --a-highs   per-band energy (0..1)
+ * Ambient effects below are pure CSS off these vars (GPU-friendly, no React).
+ */
+
+/* ── Frequency bars (AudioVisualizer) ─────────────────────────────────── */
+.av {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 1em;
+  color: #1db954;
+}
+
+.av i {
+  width: 4px;
+  height: 100%;
+  background: currentColor;
+  border-radius: 2px;
+  transform-origin: bottom;
+  transform: scaleY(0.12);
+  will-change: transform;
+}
+
+/* ── Reactive glow (AudioReactiveGlow) ────────────────────────────────── */
+.arg {
+  position: relative;
+  border-radius: inherit;
+  transition: box-shadow 120ms ease;
+  box-shadow:
+    0 0 calc(14px + var(--a-volume, 0) * 34px)
+        calc(var(--a-volume, 0) * 5px)
+        rgba(29, 185, 84, calc(0.10 + var(--a-volume, 0) * 0.35));
+}
+
+/* ── Reactive neon border (AudioReactiveBorder) ───────────────────────── */
+.arb {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  z-index: 1;
+  border: 2px solid rgba(52, 211, 153, calc(0.30 + var(--a-volume, 0) * 0.5));
+  box-shadow:
+    0 0 calc(8px + var(--a-volume, 0) * 26px)
+        rgba(52, 211, 153, calc(0.10 + var(--a-volume, 0) * 0.40)),
+    inset 0 0 calc(6px + var(--a-volume, 0) * 22px)
+        rgba(52, 211, 153, calc(0.05 + var(--a-volume, 0) * 0.18));
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+/* ── Background ambience ───────────────────────────────────────────────
+   Barely-there brightness lift on the wallpaper, synced to the beat. */
+.bg-video {
+  filter: brightness(calc(1 + var(--a-volume, 0) * 0.05));
+  transition: filter 160ms ease, opacity 0.6s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .av i { transform: scaleY(0.4) !important; }
+  .arg, .arb, .bg-video { transition: none; }
+}

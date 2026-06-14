@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Volume2, Volume1, VolumeX, Play, Pause, ArrowLeft, ArrowRight, Heart } from 'lucide-react';
+import { audioReactor } from '../audio/audioReactor';
+import AudioVisualizer from './audio/AudioVisualizer';
+import AudioReactiveGlow from './audio/AudioReactiveGlow';
 import './YouTubePlayer.css';
 
 /*
@@ -65,6 +68,7 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
   // Live playback info streamed from the YouTube iframe API (postMessage).
   const [info, setInfo] = useState({ title: '', author: '', currentTime: 0, duration: 0, playerState: -1, muted: false });
   const iframeRef = useRef(null);
+  const volRef = useRef(null);
 
   useEffect(() => {
     if (open) setHasOpened(true);
@@ -73,6 +77,23 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
   useEffect(() => {
     localStorage.setItem(LIKED_KEY, JSON.stringify(liked));
   }, [liked]);
+
+  // Drive the shared audio reactor from real YouTube playback state, so every
+  // visualizer / ambient effect starts, freezes, and resumes with the music.
+  useEffect(() => {
+    const s = info.playerState; // 1 playing · 2 paused · 3 buffering · else stopped
+    audioReactor.setStatus(s === 1 ? 'playing' : s === 3 ? 'loading' : s === 2 ? 'paused' : 'stopped');
+  }, [info.playerState]);
+
+  // Close the volume slider when clicking / tapping outside it.
+  useEffect(() => {
+    if (!showVolume) return;
+    const onDown = (e) => {
+      if (volRef.current && !volRef.current.contains(e.target)) setShowVolume(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [showVolume]);
 
   useEffect(() => {
     const onMessage = (e) => {
@@ -191,11 +212,11 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
           {/* ── Player face ─────────────────────────────────────────── */}
           <div className="sp2-face">
             <div className="sp2-top">
-              <div className="sp2-art">
-                <span className={`sp2-eq${isPlaying ? '' : ' sp2-eq--paused'}`}>
-                  <i /><i /><i />
-                </span>
-              </div>
+              <AudioReactiveGlow className="sp2-art-glow">
+                <div className="sp2-art">
+                  <AudioVisualizer bars={3} className="sp2-eq-av" />
+                </div>
+              </AudioReactiveGlow>
               <div className="sp2-meta">
                 <p className="sp2-title">{info.title || active.label}</p>
                 <p className="sp2-artist">{info.author || 'YouTube'}</p>
@@ -203,37 +224,28 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
             </div>
 
             <div className="sp2-controls">
-              <div className="sp2-vol-wrap">
+              <div ref={volRef} className={'sp2-vol' + (showVolume ? ' sp2-vol--open' : '')}>
                 <button
                   className={'sp2-icon-btn' + (showVolume ? ' sp2-icon-btn--active' : '')}
                   onClick={() => setShowVolume((v) => !v)}
-                  aria-label="Volume"
+                  aria-label={silent ? 'Unmute' : 'Volume'}
                   aria-expanded={showVolume}
                 >
                   <VolIcon size={20} />
                 </button>
-                {showVolume && (
-                  <div className="sp2-volume-pop">
-                    <button
-                      className="sp2-volume-mute"
-                      onClick={() => command(info.muted ? 'unMute' : 'mute')}
-                      aria-label={silent ? 'Unmute' : 'Mute'}
-                    >
-                      <VolIcon size={16} />
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={silent ? 0 : volume}
-                      onChange={(e) => changeVolume(Number(e.target.value))}
-                      className="sp2-volume-slider"
-                      style={{ '--vol': `${silent ? 0 : volume}%` }}
-                      aria-label="Volume level"
-                    />
-                    <span className="sp2-volume-pct">{silent ? 0 : volume}</span>
-                  </div>
-                )}
+                <div className="sp2-vol-fill">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={silent ? 0 : volume}
+                    onChange={(e) => changeVolume(Number(e.target.value))}
+                    onFocus={() => setShowVolume(true)}
+                    className="sp2-volume-slider"
+                    style={{ '--vol': `${silent ? 0 : volume}%` }}
+                    aria-label="Volume"
+                  />
+                </div>
               </div>
 
               <div className="sp2-center">
@@ -281,13 +293,7 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
               >
                 <span className="yt-pl-icon">{pl.icon}</span>
                 <span className="yt-pl-name">{pl.label}</span>
-                {pl.id === active.id && (
-                  <span className="yt-pl-playing">
-                    <span className="yt-pl-playing-bar" />
-                    <span className="yt-pl-playing-bar" />
-                    <span className="yt-pl-playing-bar" />
-                  </span>
-                )}
+                {pl.id === active.id && <AudioVisualizer bars={3} className="yt-pl-av" />}
               </button>
             ))}
           </div>

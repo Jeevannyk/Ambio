@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import BackgroundVideo from './components/BackgroundVideo';
@@ -47,6 +47,22 @@ const SCENES = [
     srcs: ['/videos/rainy-night.mp4'],
   },
 ];
+
+// Global dark-mode toggle — hidden inside a live room for an immersive,
+// distraction-free view (it's also covered by the room overlay there).
+function GlobalThemeToggle({ theme, onToggle }) {
+  const { pathname } = useLocation();
+  if (/^\/rooms\/.+/.test(pathname)) return null;
+  return (
+    <button
+      className="theme-toggle theme-toggle--global"
+      onClick={onToggle}
+      aria-label="Toggle dark mode"
+    >
+      {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+    </button>
+  );
+}
 
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
@@ -105,13 +121,7 @@ function App() {
         </main>
       </div>
 
-      <button
-        className="theme-toggle theme-toggle--global"
-        onClick={handleThemeToggle}
-        aria-label="Toggle dark mode"
-      >
-        {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-      </button>
+      <GlobalThemeToggle theme={theme} onToggle={handleThemeToggle} />
 
       <SceneSelector
         scenes={SCENES}
