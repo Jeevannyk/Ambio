@@ -1,42 +1,28 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Peer from 'peerjs';
+import { Room, RoomEvent, Track } from 'livekit-client';
 
 /*
- * Real-time room over PeerJS (free public broker, no backend/keys).
+ * Real-time room over LiveKit (managed SFU — reliable signaling + TURN baked
+ * in, unlike the old PeerJS public-broker mesh). The browser fetches a short-
+ * lived join token from our own /api/token endpoint (the LiveKit secret never
+ * ships to the client), then connects to the LiveKit server.
  *
- * Topology: the host owns a deterministic peer id `ambio-room-<roomId>`.
- * Whoever enters first and finds that id free becomes the host; everyone
- * else connects to the host, receives the roster, and dials every other
- * member directly — a full WebRTC mesh (good for small focus rooms).
+ * Media (camera / mic / screen share) flows through LiveKit's tracks. Everything
+ * else rides LiveKit data messages (JSON, {t: type, ...}) — same schema as before:
+ *   hand     : {raised}                       raise/lower hand
+ *   chat     : {id, name, text, ts}           chat message
+ *   reaction : {emoji}                        floating emoji
+ *   pomodoro : {mode, secondsLeft, running}   host broadcasts timer
+ *   mute     : {}                             admin force-mutes you
+ *   kick     : {}                             admin removes you
  *
- * Data-channel messages (JSON, {t: type, ...}):
- *   hello   : {name, micOn, camOn, hand}        identity on connect
- *   roster  : {ids: [...]}                       host -> new joiner
- *   state   : {micOn, camOn}                     mic/cam changed
- *   hand    : {raised}                           raise/lower hand
- *   chat    : {id, name, text, ts}               chat message
- *   reaction: {emoji}                            floating emoji
- *   pomodoro: {mode, secondsLeft, running}       host broadcasts timer
- *   mute    : {}                                 admin force-mutes you
- *   kick    : {}                                 admin removes you
+ * The public API (return value) is identical to the old PeerJS hook, so the
+ * room UI, VideoTile, and PreJoin all work unchanged.
  */
 
-const SPEAK_THRESHOLD = 12;
-
-const ICE_CONFIG = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    // Free public TURN relay (OpenRelay) — lets peers on restrictive/symmetric
-    // NATs connect when a direct path fails. Shared & rate-limited; for heavy
-    // use swap in your own Metered/Twilio TURN credentials.
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  ],
-};
+const TOKEN_ENDPOINT = import.meta.env.VITE_TOKEN_ENDPOINT || '/api/token';
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
   const initMic = initial.micOn ?? true;
@@ -54,91 +40,101 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
   const [reactions, setReactions] = useState([]); // {key, emoji}
   const [remotePomodoro, setRemotePomodoro] = useState(null);
 
-  const peerRef = useRef(null);
+  const roomRef = useRef(null);
   const myIdRef = useRef('');
-  const dataConns = useRef(new Map()); // peerId -> DataConnection
-  const mediaConns = useRef(new Map()); // peerId -> MediaConnection
-  const camTrackRef = useRef(null); // original camera video track (for un-share)
-  const streamRef = useRef(null);
-  const meta = useRef({ name: displayName, micOn: initMic, camOn: initCam, hand: false });
-  const analysers = useRef(new Map()); // id -> {analyser, data}
-  const audioCtx = useRef(null);
+  const isHostRef = useRef(false);
+  const handRaisedRef = useRef(false);
   const maxRef = useRef(max);
-  const participantsRef = useRef([]); // mirrors participants state so callbacks always see fresh count
+  const handsRef = useRef(new Map()); // identity -> hand raised
+  const streamCache = useRef(new Map()); // identity -> reused MediaStream
+  const localMsRef = useRef(new MediaStream());
 
-  const hostId = `ambio-room-${roomId}`;
-
-  /* ---- participant table helpers ---- */
-  const upsert = useCallback((id, patch) => {
-    setParticipants((prev) => {
-      const i = prev.findIndex((p) => p.id === id);
-      let next;
-      if (i === -1) next = [...prev, { id, name: '', stream: null, micOn: true, camOn: true, hand: false, ...patch }];
-      else { next = [...prev]; next[i] = { ...next[i], ...patch }; }
-      participantsRef.current = next;
-      return next;
+  /* ---- data message send helpers ---- */
+  const publish = useCallback((msg, identities) => {
+    const room = roomRef.current;
+    if (!room) return;
+    room.localParticipant.publishData(encoder.encode(JSON.stringify(msg)), {
+      reliable: true,
+      destinationIdentities: identities,
     });
   }, []);
 
-  const removePeer = useCallback((id) => {
-    dataConns.current.get(id)?.close();
-    mediaConns.current.get(id)?.close();
-    dataConns.current.delete(id);
-    mediaConns.current.delete(id);
-    analysers.current.delete(id);
-    setParticipants((prev) => {
-      const next = prev.filter((p) => p.id !== id);
-      participantsRef.current = next;
-      return next;
-    });
-  }, []);
+  /* ---- bootstrap ---- */
+  useEffect(() => {
+    let cancelled = false;
+    const room = new Room({ adaptiveStream: true, dynacast: true });
+    roomRef.current = room;
+    maxRef.current = max;
 
-  /* ---- broadcast helper ---- */
-  const broadcast = useCallback((msg) => {
-    dataConns.current.forEach((c) => c.open && c.send(msg));
-  }, []);
+    // Build (and cache, to avoid <video> flicker) a MediaStream for a remote
+    // participant: prefer their screen share over camera, plus their mic.
+    const streamFor = (p) => {
+      let ms = streamCache.current.get(p.identity);
+      if (!ms) {
+        ms = new MediaStream();
+        streamCache.current.set(p.identity, ms);
+      }
+      const pubs = [...p.trackPublications.values()];
+      const screen = pubs.find((x) => x.source === Track.Source.ScreenShare && x.track?.mediaStreamTrack);
+      const cam = pubs.find((x) => x.source === Track.Source.Camera && x.track?.mediaStreamTrack);
+      const mic = pubs.find((x) => x.source === Track.Source.Microphone && x.track?.mediaStreamTrack);
+      const want = [];
+      const v = (screen || cam)?.track?.mediaStreamTrack;
+      const a = mic?.track?.mediaStreamTrack;
+      if (v) want.push(v);
+      if (a) want.push(a);
+      ms.getTracks().forEach((t) => { if (!want.includes(t)) ms.removeTrack(t); });
+      want.forEach((t) => { if (!ms.getTracks().includes(t)) ms.addTrack(t); });
+      return ms;
+    };
 
-  const sendTo = (id, msg) => {
-    const c = dataConns.current.get(id);
-    if (c && c.open) c.send(msg);
-  };
+    const syncParticipants = () => {
+      const list = [...room.remoteParticipants.values()].map((p) => ({
+        id: p.identity,
+        name: p.name || 'Connecting…',
+        stream: streamFor(p),
+        micOn: p.isMicrophoneEnabled,
+        camOn: p.isCameraEnabled,
+        hand: handsRef.current.get(p.identity) || false,
+      }));
+      setParticipants(list);
+    };
 
-  /* ---- speaking detection (Web Audio) ---- */
-  const attachAnalyser = useCallback((id, stream) => {
-    const track = stream?.getAudioTracks?.()[0];
-    if (!track) return;
-    try {
-      if (!audioCtx.current) audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
-      const src = audioCtx.current.createMediaStreamSource(new MediaStream([track]));
-      const analyser = audioCtx.current.createAnalyser();
-      analyser.fftSize = 512;
-      src.connect(analyser);
-      analysers.current.set(id, { analyser, data: new Uint8Array(analyser.frequencyBinCount) });
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    const rebuildLocal = () => {
+      const lp = room.localParticipant;
+      const pubs = [...lp.trackPublications.values()];
+      const screen = pubs.find((x) => x.source === Track.Source.ScreenShare && x.track?.mediaStreamTrack);
+      const cam = pubs.find((x) => x.source === Track.Source.Camera && x.track?.mediaStreamTrack);
+      const v = (screen || cam)?.track?.mediaStreamTrack;
+      const ms = localMsRef.current;
+      const want = v ? [v] : [];
+      ms.getTracks().forEach((t) => { if (!want.includes(t)) ms.removeTrack(t); });
+      want.forEach((t) => { if (!ms.getTracks().includes(t)) ms.addTrack(t); });
+      setLocalStream(ms);
+    };
 
-  /* ---- incoming data message handler ---- */
-  const handleData = useCallback(
-    (fromId, msg) => {
+    // Earliest joiner is the host; recompute on every roster change so host
+    // migrates cleanly if the current host leaves.
+    const recomputeHost = () => {
+      const all = [room.localParticipant, ...room.remoteParticipants.values()];
+      const timed = all.filter((p) => p.joinedAt);
+      const pool = timed.length ? timed : all;
+      const host = pool.reduce((a, b) => {
+        const ta = a.joinedAt?.getTime?.() ?? Infinity;
+        const tb = b.joinedAt?.getTime?.() ?? Infinity;
+        if (ta !== tb) return ta < tb ? a : b;
+        return a.identity < b.identity ? a : b; // stable tiebreak
+      });
+      const mine = host === room.localParticipant;
+      isHostRef.current = mine;
+      setIsHost(mine);
+    };
+
+    const handleData = (fromId, msg) => {
       switch (msg.t) {
-        case 'hello':
-          // Host enforces room capacity before admitting the newcomer
-          if (peerRef.current?.id === hostId) {
-            const alreadyHere = participantsRef.current.some((p) => p.id === fromId);
-            if (!alreadyHere && participantsRef.current.length >= maxRef.current - 1) {
-              sendTo(fromId, { t: 'kick', reason: 'room_full' });
-              break;
-            }
-          }
-          upsert(fromId, { name: msg.name, micOn: msg.micOn, camOn: msg.camOn, hand: msg.hand });
-          break;
-        case 'state':
-          upsert(fromId, { micOn: msg.micOn, camOn: msg.camOn });
-          break;
         case 'hand':
-          upsert(fromId, { hand: msg.raised });
+          handsRef.current.set(fromId, msg.raised);
+          syncParticipants();
           break;
         case 'chat':
           setMessages((m) => [...m, msg]);
@@ -149,188 +145,109 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
         case 'pomodoro':
           setRemotePomodoro({ mode: msg.mode, secondsLeft: msg.secondsLeft, running: msg.running });
           break;
-        case 'roster':
-          // host told us the other members — dial each of them
-          msg.ids.forEach((id) => {
-            if (id !== myIdRef.current && !dataConns.current.has(id)) connectToPeer(id);
-          });
-          break;
         case 'mute':
-          if (streamRef.current) {
-            streamRef.current.getAudioTracks().forEach((t) => (t.enabled = false));
-            setMicOn(false);
-            meta.current.micOn = false;
-            broadcast({ t: 'state', micOn: false, camOn: meta.current.camOn });
-          }
+          room.localParticipant.setMicrophoneEnabled(false);
+          setMicOn(false);
           break;
         case 'kick':
-          cleanup();
-          setStatus(msg.reason === 'room_full' ? 'full' : 'ended');
+          room.disconnect();
+          setStatus('ended');
           break;
         default:
           break;
       }
-    },
-    [upsert, broadcast]
-  );
+    };
 
-  /* ---- wire a data connection ---- */
-  const wireData = useCallback(
-    (conn) => {
-      dataConns.current.set(conn.peer, conn);
-      conn.on('open', () => {
-        conn.send({ t: 'hello', ...meta.current });
-        // If I'm the host, tell the newcomer about everyone already here.
-        if (isHost || peerRef.current?.id === hostId) {
-          const ids = [...dataConns.current.keys()].filter((id) => id !== conn.peer);
-          conn.send({ t: 'roster', ids });
-        }
+    // Wire LiveKit events to our participant table.
+    room
+      .on(RoomEvent.ParticipantConnected, () => { recomputeHost(); syncParticipants(); })
+      .on(RoomEvent.ParticipantDisconnected, (p) => {
+        streamCache.current.delete(p.identity);
+        handsRef.current.delete(p.identity);
+        recomputeHost();
+        syncParticipants();
+      })
+      .on(RoomEvent.TrackSubscribed, () => syncParticipants())
+      .on(RoomEvent.TrackUnsubscribed, () => syncParticipants())
+      .on(RoomEvent.TrackMuted, () => syncParticipants())
+      .on(RoomEvent.TrackUnmuted, () => syncParticipants())
+      .on(RoomEvent.LocalTrackPublished, () => rebuildLocal())
+      .on(RoomEvent.LocalTrackUnpublished, () => rebuildLocal())
+      .on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        setSpeakingIds(speakers.map((s) => (s === room.localParticipant ? 'me' : s.identity)));
+      })
+      .on(RoomEvent.DataReceived, (payload, participant) => {
+        let msg;
+        try { msg = JSON.parse(decoder.decode(payload)); } catch { return; }
+        handleData(participant?.identity, msg);
+      })
+      .on(RoomEvent.Disconnected, () => {
+        if (!cancelled) setStatus((s) => (s === 'full' ? s : 'ended'));
       });
-      conn.on('data', (d) => handleData(conn.peer, d));
-      conn.on('close', () => removePeer(conn.peer));
-      conn.on('error', () => removePeer(conn.peer));
-    },
-    [handleData, removePeer, isHost, hostId]
-  );
-
-  /* ---- place a call (media) to a peer ---- */
-  const callPeer = useCallback((id) => {
-    if (!peerRef.current || !streamRef.current) return;
-    if (mediaConns.current.has(id)) return;
-    const call = peerRef.current.call(id, streamRef.current);
-    if (!call) return;
-    mediaConns.current.set(id, call);
-    call.on('stream', (remoteStream) => {
-      upsert(id, { stream: remoteStream });
-      attachAnalyser(id, remoteStream);
-    });
-    call.on('close', () => removePeer(id));
-  }, [upsert, attachAnalyser, removePeer]);
-
-  /* ---- connect (data + media) to a peer ---- */
-  const connectToPeer = useCallback(
-    (id) => {
-      if (!peerRef.current || id === myIdRef.current) return;
-      if (!dataConns.current.has(id)) {
-        const conn = peerRef.current.connect(id, { reliable: true });
-        wireData(conn);
-      }
-      callPeer(id);
-    },
-    [wireData, callPeer]
-  );
-
-  const cleanup = useCallback(() => {
-    dataConns.current.forEach((c) => c.close());
-    mediaConns.current.forEach((c) => c.close());
-    dataConns.current.clear();
-    mediaConns.current.clear();
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    peerRef.current?.destroy();
-    audioCtx.current?.close().catch(() => {});
-  }, []);
-
-  /* ---- bootstrap ---- */
-  useEffect(() => {
-    let cancelled = false;
 
     async function start() {
-      const videoConstraint = initial.videoDeviceId
-        ? { deviceId: { exact: initial.videoDeviceId } }
-        : true;
-      const audioConstraint = initial.audioDeviceId
-        ? { deviceId: { exact: initial.audioDeviceId } }
-        : true;
-      let stream;
+      let url, token;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: audioConstraint });
+        const identity = (crypto.randomUUID && crypto.randomUUID()) || `u-${Date.now()}-${Math.random()}`;
+        const qs = `room=${encodeURIComponent(roomId)}&identity=${encodeURIComponent(identity)}&name=${encodeURIComponent(displayName)}`;
+        const resp = await fetch(`${TOKEN_ENDPOINT}?${qs}`);
+        if (!resp.ok) throw new Error('token request failed');
+        ({ url, token } = await resp.json());
+        if (!url || !token) throw new Error('bad token response');
       } catch {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
-          setCamOn(false);
-          meta.current.camOn = false;
-        } catch {
-          if (!cancelled) setStatus('error');
-          return;
-        }
-      }
-      if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop());
+        if (!cancelled) setStatus('error');
         return;
       }
-      streamRef.current = stream;
-      setLocalStream(stream);
-      camTrackRef.current = stream.getVideoTracks()[0] || null;
-      // Apply the mic/cam choices made on the pre-join screen.
-      stream.getAudioTracks().forEach((t) => (t.enabled = meta.current.micOn));
-      stream.getVideoTracks().forEach((t) => (t.enabled = meta.current.camOn));
-      attachAnalyser('me', stream);
 
-      // Try to claim the host id first.
-      const tryHost = new Peer(hostId, { debug: 0, config: ICE_CONFIG });
-      tryHost.on('open', () => {
-        if (cancelled) return tryHost.destroy();
-        peerRef.current = tryHost;
-        myIdRef.current = hostId;
-        setIsHost(true);
-        setStatus('live');
-        wirePeerEvents(tryHost);
-      });
-      tryHost.on('error', (err) => {
-        if (err.type !== 'unavailable-id') return;
-        // Host already exists — join as a normal member.
-        tryHost.destroy();
-        const me = new Peer({ debug: 0, config: ICE_CONFIG });
-        me.on('open', (id) => {
-          if (cancelled) return me.destroy();
-          peerRef.current = me;
-          myIdRef.current = id;
-          setStatus('live');
-          wirePeerEvents(me);
-          connectToPeer(hostId); // dial the host; roster brings the rest
-        });
-        me.on('error', () => !cancelled && setStatus('error'));
-      });
-    }
+      try {
+        await room.connect(url, token);
+      } catch {
+        if (!cancelled) setStatus('error');
+        return;
+      }
+      if (cancelled) return room.disconnect();
 
-    function wirePeerEvents(peer) {
-      peer.on('connection', (conn) => wireData(conn));
-      peer.on('call', (call) => {
-        call.answer(streamRef.current);
-        mediaConns.current.set(call.peer, call);
-        call.on('stream', (remoteStream) => {
-          upsert(call.peer, { stream: remoteStream });
-          attachAnalyser(call.peer, remoteStream);
-        });
-        call.on('close', () => removePeer(call.peer));
-      });
-      peer.on('disconnected', () => peer.reconnect());
+      myIdRef.current = room.localParticipant.identity;
+
+      // Best-effort capacity check (hard limits need a server-configured room).
+      if (room.remoteParticipants.size + 1 > maxRef.current) {
+        await room.disconnect();
+        if (!cancelled) setStatus('full');
+        return;
+      }
+
+      // Apply the mic/cam + device choices from the pre-join screen.
+      try {
+        await room.localParticipant.setMicrophoneEnabled(
+          initMic,
+          initial.audioDeviceId ? { deviceId: initial.audioDeviceId } : undefined
+        );
+      } catch { /* no mic */ }
+      try {
+        await room.localParticipant.setCameraEnabled(
+          initCam,
+          initial.videoDeviceId ? { deviceId: initial.videoDeviceId } : undefined
+        );
+      } catch {
+        setCamOn(false);
+      }
+
+      recomputeHost();
+      rebuildLocal();
+      syncParticipants();
+      if (!cancelled) setStatus('live');
     }
 
     start();
+
     return () => {
       cancelled = true;
-      cleanup();
+      streamCache.current.clear();
+      handsRef.current.clear();
+      room.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
-
-  /* ---- speaking poll ---- */
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const speaking = [];
-      analysers.current.forEach(({ analyser, data }, id) => {
-        analyser.getByteFrequencyData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) sum += data[i];
-        const avg = sum / data.length;
-        if (avg > SPEAK_THRESHOLD) speaking.push(id);
-      });
-      // a muted local mic should never show as speaking
-      setSpeakingIds(meta.current.micOn ? speaking : speaking.filter((s) => s !== 'me'));
-    }, 350);
-    return () => clearInterval(interval);
-  }, []);
 
   /* ---- reaction auto-expiry ---- */
   useEffect(() => {
@@ -340,116 +257,81 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
   }, [reactions]);
 
   /* ---- public controls ---- */
-  const toggleMic = useCallback(() => {
-    const s = streamRef.current;
-    if (!s) return;
-    const next = !meta.current.micOn;
-    s.getAudioTracks().forEach((t) => (t.enabled = next));
-    meta.current.micOn = next;
+  const toggleMic = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+    const next = !room.localParticipant.isMicrophoneEnabled;
+    await room.localParticipant.setMicrophoneEnabled(next);
     setMicOn(next);
-    broadcast({ t: 'state', micOn: next, camOn: meta.current.camOn });
-  }, [broadcast]);
-
-  const toggleCam = useCallback(() => {
-    const s = streamRef.current;
-    if (!s) return;
-    const next = !meta.current.camOn;
-    s.getVideoTracks().forEach((t) => (t.enabled = next));
-    meta.current.camOn = next;
-    setCamOn(next);
-    broadcast({ t: 'state', micOn: meta.current.micOn, camOn: next });
-  }, [broadcast]);
-
-  const replaceVideoTrack = (track) => {
-    mediaConns.current.forEach((call) => {
-      const sender = call.peerConnection?.getSenders().find((s) => s.track && s.track.kind === 'video');
-      if (sender) sender.replaceTrack(track);
-    });
-  };
-
-  const startScreenShare = useCallback(async () => {
-    try {
-      const display = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const screenTrack = display.getVideoTracks()[0];
-      replaceVideoTrack(screenTrack);
-      // reflect locally
-      const local = streamRef.current;
-      const oldTrack = local.getVideoTracks()[0];
-      if (oldTrack) local.removeTrack(oldTrack);
-      local.addTrack(screenTrack);
-      setLocalStream(new MediaStream(local.getTracks()));
-      setSharing(true);
-      screenTrack.onended = () => stopScreenShare();
-    } catch {
-      /* user cancelled */
-    }
   }, []);
 
-  const stopScreenShare = useCallback(() => {
-    const cam = camTrackRef.current;
-    const local = streamRef.current;
-    if (!local) return;
-    const screenTrack = local.getVideoTracks()[0];
-    if (screenTrack) {
-      screenTrack.stop();
-      local.removeTrack(screenTrack);
-    }
-    if (cam) {
-      local.addTrack(cam);
-      replaceVideoTrack(cam);
-    }
-    setLocalStream(new MediaStream(local.getTracks()));
+  const toggleCam = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+    const next = !room.localParticipant.isCameraEnabled;
+    await room.localParticipant.setCameraEnabled(next);
+    setCamOn(next);
+  }, []);
+
+  const startScreenShare = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+    try {
+      await room.localParticipant.setScreenShareEnabled(true);
+      setSharing(true);
+    } catch { /* user cancelled */ }
+  }, []);
+
+  const stopScreenShare = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+    await room.localParticipant.setScreenShareEnabled(false);
     setSharing(false);
   }, []);
 
   const raiseHand = useCallback(() => {
-    const next = !meta.current.hand;
-    meta.current.hand = next;
+    const next = !handRaisedRef.current;
+    handRaisedRef.current = next;
     setHandRaised(next);
-    broadcast({ t: 'hand', raised: next });
-  }, [broadcast]);
+    publish({ t: 'hand', raised: next });
+  }, [publish]);
 
   const sendChat = useCallback(
     (text) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      const msg = { t: 'chat', id: myIdRef.current, name: meta.current.name, text: trimmed, ts: Date.now() };
+      const msg = { t: 'chat', id: myIdRef.current, name: displayName, text: trimmed, ts: Date.now() };
       setMessages((m) => [...m, msg]);
-      broadcast(msg);
+      publish(msg);
     },
-    [broadcast]
+    [publish, displayName]
   );
 
   const sendReaction = useCallback(
     (emoji) => {
       setReactions((r) => [...r, { key: `me-${Date.now()}-${Math.random()}`, emoji }]);
-      broadcast({ t: 'reaction', emoji });
+      publish({ t: 'reaction', emoji });
     },
-    [broadcast]
+    [publish]
   );
 
   const broadcastPomodoro = useCallback(
     (state) => {
-      if (!isHost) return;
-      broadcast({ t: 'pomodoro', ...state });
+      if (!isHostRef.current) return;
+      publish({ t: 'pomodoro', ...state });
     },
-    [broadcast, isHost]
+    [publish]
   );
 
-  // Admin actions (only meaningful for the host/admin)
-  const muteParticipant = useCallback((id) => sendTo(id, { t: 'mute' }), []);
-  const kickParticipant = useCallback(
-    (id) => {
-      sendTo(id, { t: 'kick' });
-      setTimeout(() => removePeer(id), 200);
-    },
-    [removePeer]
-  );
+  // Admin actions: ask the target to self-mute / leave over data (no server
+  // admin call needed). Works because every client honors these messages.
+  const muteParticipant = useCallback((id) => publish({ t: 'mute' }, [id]), [publish]);
+  const kickParticipant = useCallback((id) => publish({ t: 'kick' }, [id]), [publish]);
 
   const leave = useCallback(() => {
-    cleanup();
+    roomRef.current?.disconnect();
     setStatus('ended');
-  }, [cleanup]);
+  }, []);
 
   return {
     status,
