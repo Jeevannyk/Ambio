@@ -52,7 +52,7 @@ const SCENES = [
 // distraction-free view (it's also covered by the room overlay there).
 function GlobalThemeToggle({ theme, onToggle }) {
   const { pathname } = useLocation();
-  if (/^\/rooms\/.+/.test(pathname)) return null;
+  if (/^\/rooms\/.+/.test(pathname) || pathname === '/tasks') return null;
   return (
     <button
       className="theme-toggle theme-toggle--global"

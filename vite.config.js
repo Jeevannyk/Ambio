@@ -10,6 +10,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // In dev the token server runs separately (npm run server, :3001).
+    // Proxy /api so the frontend can fetch join tokens same-origin.
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
   },
   resolve: {
     alias: {

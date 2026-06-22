@@ -654,6 +654,24 @@ body[data-theme='dark'] .todo-form select {
   );
 }
 
+@media print {
+  .app-shell,
+  .rail,
+  .theme-toggle--global,
+  .bg-video-wrapper,
+  .bg-yt-iframe,
+  .undo-toast,
+  .themes-panel,
+  .youtube-player,
+  .pomodoro-widget {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+}
+
 /* Fullscreen muted YouTube embed as wallpaper (custom link mode).
    Sized to cover the viewport at 16:9 from the centre. */
 .bg-yt-iframe {
