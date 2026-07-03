@@ -14,9 +14,21 @@ services:
     buildCommand: npm install && npm run build
     startCommand: node server/index.js
     envVars:
+      # Server-side (LiveKit token minting) — never shipped to the browser.
       - key: LIVEKIT_API_KEY
         sync: false
       - key: LIVEKIT_API_SECRET
         sync: false
       - key: LIVEKIT_URL
+        sync: false
+      # Frontend (VITE_*) — inlined at BUILD time, so they MUST be set here or
+      # the production bundle ships with no Supabase keys and login silently
+      # breaks. All are public-safe values (anon key, form/client IDs).
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_WEB3FORMS_KEY
+        sync: false
+      - key: VITE_SPOTIFY_CLIENT_ID
         sync: false

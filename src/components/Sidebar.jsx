@@ -1,6 +1,7 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Home, ListTodo, Video, User, Palette, Music } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Home, ListTodo, Video, User, Palette, Music, LogOut } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 
 const NAV = [
   { to: '/',        label: 'Home',    icon: Home },
@@ -15,6 +16,14 @@ const NAV = [
  * Tools (Themes, Music) open overlay panels; nothing pushes content.
  */
 function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   return (
     <aside className="rail" aria-label="Navigation">
       <div className="rail-group">
@@ -55,6 +64,12 @@ function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
           <span className="rail-item-label">Music</span>
         </button>
 
+        {user && (
+          <button className="rail-item" onClick={handleSignOut} title="Sign out">
+            <LogOut size={20} />
+            <span className="rail-item-label">Logout</span>
+          </button>
+        )}
       </div>
     </aside>
   );

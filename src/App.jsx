@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import BackgroundVideo from './components/BackgroundVideo';
@@ -8,12 +8,18 @@ import SceneSelector from './components/SceneSelector';
 import YouTubePlayer from './components/YouTubePlayer';
 import PomodoroWidget from './components/PomodoroWidget';
 import { usePomodoro } from './hooks/usePomodoro';
-import WelcomePage from './pages/WelcomePage';
-import TasksPage from './pages/TasksPage';
-import MyRoomPage from './pages/MyRoomPage';
-import RoomsPage from './pages/RoomsPage';
-import RoomCall from './pages/RoomCall';
+import { AuthProvider, useAuth } from './lib/AuthContext';
 import './App.css';
+
+// Route pages are code-split: the heavy room/video stack (LiveKit) and the
+// large Tasks page only download when the user actually visits those routes,
+// keeping the initial bundle small.
+const WelcomePage = lazy(() => import('./pages/WelcomePage'));
+const AuthPage = lazy(() => import('./pages/AuthPage'));
+const TasksPage = lazy(() => import('./pages/TasksPage'));
+const MyRoomPage = lazy(() => import('./pages/MyRoomPage'));
+const RoomsPage = lazy(() => import('./pages/RoomsPage'));
+const RoomCall = lazy(() => import('./pages/RoomCall'));
 
 const THEME_KEY = 'react-todo-app.theme';
 
@@ -52,7 +58,10 @@ const SCENES = [
 // distraction-free view (it's also covered by the room overlay there).
 function GlobalThemeToggle({ theme, onToggle }) {
   const { pathname } = useLocation();
-  if (/^\/rooms\/.+/.test(pathname) || pathname === '/tasks') return null;
+  // Show everywhere except inside a live room (immersive) and the auth pages
+  // (they have their own fixed theme).
+  // On /tasks the toggle lives inside the toolbar (with the todo tools), so hide the floating one here too.
+  if (/^\/rooms\/.+/.test(pathname) || pathname === '/login' || pathname === '/signup' || pathname === '/tasks') return null;
   return (
     <button
       className="theme-toggle theme-toggle--global"
@@ -62,6 +71,14 @@ function GlobalThemeToggle({ theme, onToggle }) {
       {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
     </button>
   );
+}
+
+// Block protected pages until the user has signed in; bounce to /login.
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null; // wait for the session check before deciding
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
 }
 
 function App() {
@@ -95,6 +112,7 @@ function App() {
   };
 
   return (
+    <AuthProvider>
     <BrowserRouter>
       {customVideoId ? (
         <YouTubeWallpaper videoId={customVideoId} />
@@ -111,13 +129,17 @@ function App() {
         />
 
         <main className="content-area">
-          <Routes>
-            <Route path="/" element={<WelcomePage />} />
-            <Route path="/tasks" element={<TasksPage />} />
-            <Route path="/my-room" element={<MyRoomPage pomodoro={pomodoro} />} />
-            <Route path="/rooms" element={<RoomsPage />} />
-            <Route path="/rooms/:id" element={<RoomCall pomodoro={pomodoro} />} />
-          </Routes>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/login" element={<AuthPage />} />
+              <Route path="/signup" element={<AuthPage />} />
+              <Route path="/" element={<RequireAuth><WelcomePage /></RequireAuth>} />
+              <Route path="/tasks" element={<RequireAuth><TasksPage theme={theme} onThemeToggle={handleThemeToggle} /></RequireAuth>} />
+              <Route path="/my-room" element={<RequireAuth><MyRoomPage pomodoro={pomodoro} /></RequireAuth>} />
+              <Route path="/rooms" element={<RequireAuth><RoomsPage /></RequireAuth>} />
+              <Route path="/rooms/:id" element={<RequireAuth><RoomCall pomodoro={pomodoro} /></RequireAuth>} />
+            </Routes>
+          </Suspense>
         </main>
       </div>
 
@@ -140,6 +162,7 @@ function App() {
       />
       <PomodoroWidget pomodoro={pomodoro} />
     </BrowserRouter>
+    </AuthProvider>
   );
 }
 

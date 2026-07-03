@@ -77,7 +77,7 @@
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: var(--accent, #6366f1);
+  background: var(--accent, #3b82f6);
   color: #fff;
   font-size: 1.8rem;
   font-weight: 700;
@@ -134,11 +134,11 @@
 
 .prejoin-input:focus {
   outline: none;
-  border-color: var(--accent, #6366f1);
+  border-color: var(--accent, #3b82f6);
 }
 
 .prejoin-join {
-  background: var(--accent, #6366f1);
+  background: var(--accent, #3b82f6);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -149,7 +149,7 @@
   transition: background 0.15s;
 }
 
-.prejoin-join:hover:not(:disabled) { background: var(--accent-hover, #4f46e5); }
+.prejoin-join:hover:not(:disabled) { background: var(--accent-hover, #2563eb); }
 
 .prejoin-join:disabled {
   opacity: 0.45;
@@ -165,8 +165,8 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--accent, #6366f1);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent, #3b82f6);
   margin-bottom: 0.25rem;
 }
 
@@ -308,8 +308,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(99, 102, 241, 0.25);
-  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: rgba(59, 130, 246, 0.25);
+  border: 1px solid rgba(59, 130, 246, 0.4);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
   backdrop-filter: blur(8px);
@@ -325,7 +325,7 @@
 }
 
 .rc-timer--btn:hover {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(59, 130, 246, 0.4);
 }
 
 .rc-timer-mode {
@@ -333,7 +333,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #a5b4fc;
+  color: #93c5fd;
 }
 
 .rc-timer-time {
@@ -429,7 +429,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: var(--accent, #6366f1);
+  background: var(--accent, #3b82f6);
   color: #fff;
   font-size: 1.6rem;
   font-weight: 700;
@@ -573,7 +573,7 @@
 .rc-msg-name {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #a5b4fc;
+  color: #93c5fd;
 }
 
 .rc-msg-text {
@@ -586,7 +586,7 @@
 }
 
 .rc-msg--me .rc-msg-text {
-  background: var(--accent, #6366f1);
+  background: var(--accent, #3b82f6);
   color: #fff;
 }
 
@@ -610,11 +610,11 @@
 
 .rc-chat-input input:focus {
   outline: none;
-  border-color: var(--accent, #6366f1);
+  border-color: var(--accent, #3b82f6);
 }
 
 .rc-chat-input button {
-  background: var(--accent, #6366f1);
+  background: var(--accent, #3b82f6);
   border: none;
   border-radius: 8px;
   color: #fff;
@@ -747,8 +747,8 @@
 }
 
 .rc-ctrl--active {
-  color: #a5b4fc;
-  background: rgba(99, 102, 241, 0.15);
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .rc-ctrl--leave {
@@ -810,7 +810,7 @@
 
 .rc-leave-btn {
   margin-top: 0.5rem;
-  background: var(--accent, #6366f1);
+  background: var(--accent, #3b82f6);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -904,7 +904,7 @@
 }
 
 .rc-strip-item--pinned {
-  border-color: #6366f1;
+  border-color: #3b82f6;
 }
 
 .rc-strip-item .vtile {

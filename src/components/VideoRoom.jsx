@@ -7,7 +7,7 @@ import './VideoRoom.css';
 
 /* ── Simulated participants ───────────────────────────────────────────── */
 const FAKE_PARTICIPANTS = [
-  { id: 'fp1', name: 'Alex Chen', initials: 'AC', color: '#6366f1', muted: false },
+  { id: 'fp1', name: 'Alex Chen', initials: 'AC', color: '#3b82f6', muted: false },
   { id: 'fp2', name: 'Sarah Kim', initials: 'SK', color: '#ec4899', muted: true },
   { id: 'fp3', name: 'Dev Patel', initials: 'DP', color: '#f59e0b', muted: false },
 ];

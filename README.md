@@ -1,70 +1,56 @@
-# Getting Started with Create React App
+# Ambio
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A calm place to focus. Pick a cozy background (forest, ocean, city at night, rain), play some music, start a timer, and get your work done. You can also study together with friends in shared video rooms.
 
-## Available Scripts
+## What you can do
 
-In the project directory, you can run:
+- **Set the mood** — full-screen video wallpapers, or paste your own YouTube video as the background.
+- **Play music** — a built-in music player to keep you in the zone.
+- **Focus timer** — a Pomodoro timer (work / break cycles) that floats on screen.
+- **To-do list** — a clean tasks page with notes, subtasks, reminders, tags, and a streak calendar.
+- **Study rooms** — create or join a private video room (with a code) and focus alongside others.
+- **Your own account** — sign up / log in so your stuff is saved.
+- **Light & dark mode** — one click to switch.
 
-### `npm start`
+## Run it on your computer
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+You need [Node.js](https://nodejs.org) version 20 or newer installed.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+1. **Get the code and install the bits it needs**
+   ```bash
+   npm install
+   ```
 
-### `npm test`
+2. **Add your keys (optional, but needed for login, music, and video rooms)**
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+   Make a copy of `.env.example` and name it `.env`, then fill in the values. The file explains where to get each one. You can leave them blank to just try the basic app.
 
-### `npm run build`
+3. **Start it**
+   ```bash
+   npm run dev
+   ```
+   Then open the link it prints (usually http://localhost:5173) in your browser.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+4. **For video rooms** — open a second terminal and run the little server that hands out room passes:
+   ```bash
+   npm run server
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## The commands
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Runs the app while you're working on it |
+| `npm run server` | Runs the server that powers video rooms |
+| `npm run build` | Packages the app for going live |
+| `npm run preview` | Previews that packaged version |
 
-### `npm run eject`
+## How it's built
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- **React** + **Vite** for the app
+- **Tailwind CSS** for the look
+- **Supabase** for accounts and login
+- **LiveKit** for the video rooms
+- A small **Express** server for room passes (tokens)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+That's it — open it up and enjoy your focus time.

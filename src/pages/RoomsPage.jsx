@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Plus, X, Users, LogIn, Trash2, Copy, Check } from 'lucide-react';
+import { Video, Plus, X, Users, LogIn, Trash2, Copy, Check, Shield } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
 
@@ -25,6 +26,7 @@ function loadRooms() {
 
 function RoomsPage() {
   const navigate = useNavigate();
+  const { isAdmin: admin } = useAuth();
   const [rooms, setRooms] = useState(loadRooms);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', max: 5 });
@@ -38,6 +40,7 @@ function RoomsPage() {
 
   const createRoom = (e) => {
     e.preventDefault();
+    if (!admin) return;
     if (!form.name.trim()) { setError('Room name is required.'); return; }
     const max = Math.min(6, Math.max(2, Number(form.max) || 5));
     setRooms((prev) => [
@@ -67,6 +70,7 @@ function RoomsPage() {
   };
 
   const deleteRoom = (id) => {
+    if (!admin) return;
     setRooms((prev) => prev.filter((r) => r.id !== id));
   };
 
@@ -74,13 +78,20 @@ function RoomsPage() {
     <div className="rooms-page">
       <div className="rooms-header">
         <div>
-          <h2 className="rooms-title">Rooms</h2>
-          <p className="rooms-sub">Join a focus room to work alongside others.</p>
+          <h2 className="rooms-title">
+            Rooms
+            {admin && <span className="rooms-admin-badge"><Shield size={12} /> Admin</span>}
+          </h2>
+          <p className="rooms-sub">
+            {admin ? 'Create and manage focus rooms, or join one.' : 'Join a focus room with an invite code.'}
+          </p>
         </div>
-        <button className="rooms-create-btn" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? <X size={16} /> : <Plus size={16} />}
-          {showForm ? 'Cancel' : 'Create Room'}
-        </button>
+        {admin && (
+          <button className="rooms-create-btn" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? <X size={16} /> : <Plus size={16} />}
+            {showForm ? 'Cancel' : 'Create Room'}
+          </button>
+        )}
       </div>
 
       <form className="room-join-code" onSubmit={joinByCode}>
@@ -93,7 +104,7 @@ function RoomsPage() {
         <button type="submit" className="room-submit-btn">Join</button>
       </form>
 
-      {showForm && (
+      {admin && showForm && (
         <form className="room-form" onSubmit={createRoom}>
           <h3 className="room-form-title">New Room</h3>
           {error && <p className="room-form-error">{error}</p>}
@@ -128,7 +139,7 @@ function RoomsPage() {
       {rooms.length === 0 ? (
         <div className="rooms-empty">
           <Video size={40} opacity={0.3} />
-          <p>No rooms yet. Create one above.</p>
+          <p>{admin ? 'No rooms yet. Create one above.' : 'No rooms available. Ask an admin, or join with an invite code.'}</p>
         </div>
       ) : (
         <div className="rooms-grid">
@@ -138,9 +149,11 @@ function RoomsPage() {
                 <div className="room-card-icon">
                   <Video size={20} />
                 </div>
-                <button className="room-delete-btn" onClick={() => deleteRoom(room.id)} aria-label="Delete room">
-                  <Trash2 size={14} />
-                </button>
+                {admin && (
+                  <button className="room-delete-btn" onClick={() => deleteRoom(room.id)} aria-label="Delete room">
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
               <h3 className="room-card-name">{room.name}</h3>
               {room.description && <p className="room-card-desc">{room.description}</p>}

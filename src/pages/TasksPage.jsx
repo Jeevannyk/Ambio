@@ -4,6 +4,7 @@ import {
   Headset, CalendarDays, Bell, FileText, Hash, Plus,
   Target, Archive, Check, ArrowUp, Lock, LayoutGrid, Layers, Printer,
   ChevronRight, ChevronLeft, CircleCheck, Paperclip, Download, Flame,
+  Moon, Sun,
 } from 'lucide-react';
 import ReminderModal from '../components/tasks/ReminderModal';
 import MoveToModal from '../components/tasks/MoveToModal';
@@ -15,6 +16,16 @@ const STORAGE_KEY = 'react-todo-app.tasks';
 const LAYOUT_KEY = 'react-todo-app.tasks.layout';
 const VIEW_KEY = 'react-todo-app.tasks.view';
 const STREAK_KEY = 'react-todo-app.streak';
+const LASTSEEN_KEY = 'react-todo-app.lastSeen';
+
+function streakMessage(n) {
+  if (n >= 30) return "A whole month of fire. You're unstoppable. 🔥";
+  if (n >= 14) return 'Two weeks strong — legendary focus!';
+  if (n >= 7) return "A full week and counting — you're on fire!";
+  if (n >= 3) return `${n} days in a row. Momentum is building!`;
+  if (n === 2) return 'Two days strong — keep the fire alive!';
+  return 'Your streak is alive — keep it burning today!';
+}
 const LISTS = ['Personal', 'Work', 'Grocery List'];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -70,6 +81,49 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+// Soft two-note "ding-dong" chime when a reminder fires — synthesized with the
+// Web Audio API so there's no audio file to ship. Sounds like a polished to-do app.
+let _audioCtx = null;
+function playReminderChime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    _audioCtx = _audioCtx || new Ctx();
+    const ctx = _audioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    // Two bell tones (C6 then G5) with a quick attack and gentle decay.
+    [[1046.5, 0], [783.99, 0.18]].forEach(([freq, delay]) => {
+      const t = now + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.22, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.95);
+    });
+  } catch {
+    /* audio not available — fail silently */
+  }
+}
+
+// Parse a reminder's date + "9:00 AM" time into a real Date (local time).
+function reminderDueAt(reminder) {
+  if (!reminder || reminder.someday || !reminder.date) return null;
+  const base = new Date(`${reminder.date}T00:00`);
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec((reminder.time || '').trim());
+  if (m) {
+    let h = parseInt(m[1], 10) % 12;
+    if (m[3] && m[3].toUpperCase() === 'PM') h += 12;
+    base.setHours(h, parseInt(m[2], 10), 0, 0);
+  }
+  return base;
+}
+
 // Current + longest streak from a Set of 'YYYY-MM-DD' activity day-keys.
 // Current streak stays "alive" through today even if today isn't done yet.
 function computeStreaks(daySet) {
@@ -118,9 +172,10 @@ const bucketForTask = (task, now = today()) => {
   return 'upcoming';
 };
 
-function TasksPage() {
+function TasksPage({ theme, onThemeToggle }) {
   const [tasks, setTasks] = useState(loadTasks);
   const [selectedId, setSelectedId] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false); // mobile: detail slide-over open
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
   const [subDraft, setSubDraft] = useState('');
@@ -157,9 +212,14 @@ function TasksPage() {
   const [activity, setActivity] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem(STREAK_KEY) || '[]')); } catch { return new Set(); }
   });
+  const [showStreakCele, setShowStreakCele] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportForm, setSupportForm] = useState({ name: '', email: '', message: '' });
   const [supportSent, setSupportSent] = useState(false);
+  const [supportSending, setSupportSending] = useState(false);
+  const [supportErr, setSupportErr] = useState('');
+  const [subMenuOpen, setSubMenuOpen] = useState(false);
+  const subMenuRef = useRef(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterPanel, setFilterPanel] = useState(null); // 'lists' | 'tags' | 'status' | null
   const [filterByLists, setFilterByLists] = useState(() => new Set());
@@ -180,6 +240,7 @@ function TasksPage() {
         setFilterPanel(null);
       }
       if (calendarRef.current && !calendarRef.current.contains(event.target)) setCalendarOpen(false);
+      if (subMenuRef.current && !subMenuRef.current.contains(event.target)) setSubMenuOpen(false);
     };
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
@@ -222,6 +283,54 @@ function TasksPage() {
 
   const { current: currentStreak, longest: longestStreak } = useMemo(() => computeStreaks(activity), [activity]);
   const streakDays = useMemo(() => [...activity].map((k) => new Date(`${k}T00:00`)), [activity]);
+
+  // Opening the Tasks page counts as using the app today — light the day on fire.
+  useEffect(() => {
+    markActiveToday();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Watch reminders and chime (+ notify) when one comes due. Each task fires once.
+  const firedReminders = useRef(new Set());
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+    const check = () => {
+      const now = Date.now();
+      tasks.forEach((t) => {
+        if (t.done) return;
+        const due = reminderDueAt(t.reminder);
+        if (!due) return;
+        const key = `${t.id}|${t.reminder.date}|${t.reminder.time}`;
+        if (firedReminders.current.has(key)) return;
+        // Fire if due within the last 2 minutes (not for long-past reminders on load).
+        const delta = now - due.getTime();
+        if (delta >= 0 && delta < 120000) {
+          firedReminders.current.add(key);
+          playReminderChime();
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try { new Notification('Reminder', { body: t.text }); } catch {}
+          }
+        }
+      });
+    };
+    check();
+    const id = setInterval(check, 20000);
+    return () => clearInterval(id);
+  }, [tasks]);
+
+  // First visit of a new day: if a streak is alive, celebrate it once.
+  useEffect(() => {
+    const todayKey = toDateKey(new Date());
+    if (localStorage.getItem(LASTSEEN_KEY) === todayKey) return;
+    localStorage.setItem(LASTSEEN_KEY, todayKey);
+    if (currentStreak > 0) {
+      const t = setTimeout(() => setShowStreakCele(true), 500);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(VIEW_KEY, JSON.stringify({ sortMode, showDetails }));
@@ -414,6 +523,22 @@ function TasksPage() {
     update(selected.id, { subtasks: selected.subtasks.filter((s) => s.id !== sid) });
   };
 
+  const markAllSubtasksDone = () => {
+    if (!selected) return;
+    update(selected.id, { subtasks: selected.subtasks.map((s) => ({ ...s, done: true })) });
+    setSubMenuOpen(false);
+  };
+  const clearCompletedSubtasks = () => {
+    if (!selected) return;
+    update(selected.id, { subtasks: selected.subtasks.filter((s) => !s.done) });
+    setSubMenuOpen(false);
+  };
+  const deleteAllSubtasks = () => {
+    if (!selected) return;
+    update(selected.id, { subtasks: [] });
+    setSubMenuOpen(false);
+  };
+
   const MAX_ATTACH_BYTES = 2 * 1024 * 1024; // 2MB per file (localStorage limit)
   const addAttachments = (fileList) => {
     if (!selected || !fileList?.length) return;
@@ -545,7 +670,7 @@ function TasksPage() {
   };
 
   return (
-    <div className={'tasks2' + (layoutMode === 'compact' ? ' tasks2--compact' : '') + (layoutMode === 'expanded' ? ' tasks2--expanded' : '') + (!showDetails ? ' tasks2--details-hidden' : '') + (multiSelect ? ' tasks2--multi' : '')}>
+    <div className={'tasks2' + (layoutMode === 'compact' ? ' tasks2--compact' : '') + (layoutMode === 'expanded' ? ' tasks2--expanded' : '') + (!showDetails ? ' tasks2--details-hidden' : '') + (multiSelect ? ' tasks2--multi' : '') + (detailOpen ? ' tasks2--detail-open' : '')}>
       <header className="tasks2-topbar">
         <div className="t2-leftbar">
           <div className="t2-title">
@@ -768,6 +893,14 @@ function TasksPage() {
               </div>
             )}
           </div>
+          <button
+            className="t2-tool"
+            title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+            aria-label="Toggle dark mode"
+            onClick={onThemeToggle}
+          >
+            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
           <label className="t2-search" title="Search">
             <Search size={16} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
@@ -798,7 +931,7 @@ function TasksPage() {
                   className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '')}
                   style={multiSelect ? { touchAction: 'none' } : undefined}
                   onClick={() => {
-                    if (!multiSelect) setSelectedId(t.id);
+                    if (!multiSelect) { setSelectedId(t.id); setDetailOpen(true); }
                   }}
                   onPointerDown={() => { if (multiSelect) startDragSelect(i); }}
                   onPointerEnter={() => dragOverRow(i)}
@@ -848,6 +981,9 @@ function TasksPage() {
             {selected ? (
               <>
                 <div className="t2-detail-head">
+                  <button className="t2-detail-back" onClick={() => setDetailOpen(false)} aria-label="Back to list">
+                    <ChevronLeft size={18} /> Tasks
+                  </button>
                   <span className="t2-crumb">
                     <Target size={13} /> My lists <span className="t2-crumb-sep">›</span> {selected.list}
                   </span>
@@ -891,7 +1027,31 @@ function TasksPage() {
 
                 <div className="t2-section-label t2-section-label--row">
                   <span>Subtasks <span className="t2-count">{subDone}/{selected.subtasks.length}</span></span>
-                  <MoreHorizontal size={16} />
+                  <div className="t2-submenu-wrap" ref={subMenuRef}>
+                    <button
+                      className={'t2-submenu-btn' + (subMenuOpen ? ' t2-submenu-btn--open' : '')}
+                      onClick={() => setSubMenuOpen((v) => !v)}
+                      disabled={selected.subtasks.length === 0}
+                      aria-haspopup="menu"
+                      aria-expanded={subMenuOpen}
+                      aria-label="Subtask actions"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {subMenuOpen && (
+                      <div className="t2-menu-pop t2-submenu-pop" role="menu" aria-label="Subtask actions">
+                        <button className="t2-menu-item" role="menuitem" onClick={markAllSubtasksDone}>
+                          <span className="t2-menu-item-left"><CircleCheck size={15} className="t2-menu-item-icon" /> Mark all done</span>
+                        </button>
+                        <button className="t2-menu-item" role="menuitem" onClick={clearCompletedSubtasks}>
+                          <span className="t2-menu-item-left"><Check size={15} className="t2-menu-item-icon" /> Clear completed</span>
+                        </button>
+                        <button className="t2-menu-item t2-menu-item--danger" role="menuitem" onClick={deleteAllSubtasks}>
+                          <span className="t2-menu-item-left"><Trash2 size={15} className="t2-menu-item-icon" /> Delete all</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="t2-subs">
                   {selected.subtasks.map((s) => (
@@ -1006,6 +1166,33 @@ function TasksPage() {
         />
       )}
 
+      {showStreakCele && (
+        <div className="streak-cele" onClick={() => setShowStreakCele(false)}>
+          <div className="streak-cele-card" onClick={(e) => e.stopPropagation()}>
+            <div className="streak-cele-stage">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="streak-ember"
+                  style={{
+                    left: `${6 + Math.random() * 88}%`,
+                    animationDelay: `${(Math.random() * 1.6).toFixed(2)}s`,
+                    animationDuration: `${(1.6 + Math.random() * 1.4).toFixed(2)}s`,
+                    transform: `scale(${(0.5 + Math.random() * 0.9).toFixed(2)})`,
+                  }}
+                />
+              ))}
+              <Flame className="streak-cele-flame" size={84} />
+            </div>
+            <div className="streak-cele-count">{currentStreak}</div>
+            <div className="streak-cele-label">day streak</div>
+            <p className="streak-cele-msg">{streakMessage(currentStreak)}</p>
+            <p className="streak-cele-best">Best: {longestStreak} days</p>
+            <button className="streak-cele-btn" onClick={() => setShowStreakCele(false)}>Let’s go 🔥</button>
+          </div>
+        </div>
+      )}
+
       {lightningFlash && (
         <div className="lightning-overlay" aria-hidden="true">
           <div className="lightning-flash" />
@@ -1051,18 +1238,34 @@ function TasksPage() {
           ) : (
             <form
               className="t2-support-form"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
+                const key = import.meta.env.VITE_WEB3FORMS_KEY || '56727199-079f-43c8-a7a6-c1cad941658e';
+                if (!key) { setSupportErr('Support not configured yet.'); return; }
                 const { name, email, message } = supportForm;
-                const subject = encodeURIComponent(`Ambio Support Request from ${name}`);
-                const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`);
-                const a = document.createElement('a');
-                a.href = `mailto:bharath2003n@gmail.com?subject=${subject}&body=${body}`;
-                a.rel = 'noopener';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setSupportSent(true);
+                setSupportSending(true);
+                setSupportErr('');
+                try {
+                  const res = await fetch('https://api.web3forms.com/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({
+                      access_key: key,
+                      subject: `Ambio Support Request from ${name}`,
+                      from_name: 'Ambio Support',
+                      name,
+                      email,
+                      message,
+                    }),
+                  });
+                  const data = await res.json();
+                  if (data.success) setSupportSent(true);
+                  else setSupportErr('Could not send. Try again.');
+                } catch {
+                  setSupportErr('Network error. Try again.');
+                } finally {
+                  setSupportSending(false);
+                }
               }}
             >
               <input
@@ -1088,7 +1291,10 @@ function TasksPage() {
                 rows={4}
                 onChange={(e) => setSupportForm((f) => ({ ...f, message: e.target.value }))}
               />
-              <button type="submit" className="t2-support-submit">Send message</button>
+              {supportErr && <p className="t2-attach-error">{supportErr}</p>}
+              <button type="submit" className="t2-support-submit" disabled={supportSending}>
+                {supportSending ? 'Sending…' : 'Send message'}
+              </button>
             </form>
           )}
         </div>

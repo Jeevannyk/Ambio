@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Room, RoomEvent, Track } from 'livekit-client';
+import { supabase } from '../lib/supabase';
 
 /*
  * Real-time room over LiveKit (managed SFU — reliable signaling + TURN baked
@@ -190,7 +191,14 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
       try {
         const identity = (crypto.randomUUID && crypto.randomUUID()) || `u-${Date.now()}-${Math.random()}`;
         const qs = `room=${encodeURIComponent(roomId)}&identity=${encodeURIComponent(identity)}&name=${encodeURIComponent(displayName)}`;
-        const resp = await fetch(`${TOKEN_ENDPOINT}?${qs}`);
+        // Prove we're a signed-in user so the server mints a token (gates abuse).
+        const headers = {};
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const accessToken = data?.session?.access_token;
+          if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+        }
+        const resp = await fetch(`${TOKEN_ENDPOINT}?${qs}`, { headers });
         if (!resp.ok) throw new Error('token request failed');
         ({ url, token } = await resp.json());
         if (!url || !token) throw new Error('bad token response');
