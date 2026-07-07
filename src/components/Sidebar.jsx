@@ -1,20 +1,23 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, ListTodo, Video, User, Palette, Music, LogOut } from 'lucide-react';
+import {
+  House,
+  Notepad,
+  Timer,
+  VideoCamera,
+  PaintBrush,
+  MusicNotes,
+  SignOut,
+} from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
 
 const NAV = [
-  { to: '/',        label: 'Home',    icon: Home },
-  { to: '/tasks',   label: 'Tasks',   icon: ListTodo },
-  { to: '/my-room', label: 'My Room', icon: User },
-  { to: '/rooms',   label: 'Rooms',   icon: Video },
+  { to: '/',        label: 'Home',    icon: House },
+  { to: '/tasks',   label: 'Tasks',   icon: Notepad },
+  { to: '/my-room', label: 'My Room', icon: Timer },
+  { to: '/rooms',   label: 'Rooms',   icon: VideoCamera },
 ];
 
-/*
- * LifeAt-style floating rail: two small white cards with icon + tiny
- * label, hovering over the environment instead of a full-height bar.
- * Tools (Themes, Music) open overlay panels; nothing pushes content.
- */
 function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -37,7 +40,7 @@ function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
               'rail-item' + (isActive ? ' rail-item--active' : '')
             }
           >
-            <Icon size={20} />
+            <Icon size={22} weight="duotone" />
             <span className="rail-item-label">{label}</span>
           </NavLink>
         ))}
@@ -50,7 +53,7 @@ function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
           title="Themes"
           aria-expanded={themesOpen}
         >
-          <Palette size={20} />
+          <PaintBrush size={22} weight="duotone" />
           <span className="rail-item-label">Themes</span>
         </button>
 
@@ -60,13 +63,13 @@ function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
           title="Music"
           aria-expanded={musicOpen}
         >
-          <Music size={20} />
+          <MusicNotes size={22} weight="duotone" />
           <span className="rail-item-label">Music</span>
         </button>
 
         {user && (
           <button className="rail-item" onClick={handleSignOut} title="Sign out">
-            <LogOut size={20} />
+            <SignOut size={22} weight="duotone" />
             <span className="rail-item-label">Logout</span>
           </button>
         )}

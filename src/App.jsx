@@ -2,6 +2,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import Sidebar from './components/Sidebar';
+import CustomCursor from './components/CustomCursor';
 import BackgroundVideo from './components/BackgroundVideo';
 import YouTubeWallpaper from './components/YouTubeWallpaper';
 import SceneSelector from './components/SceneSelector';
@@ -161,6 +162,7 @@ function App() {
         onToggleOpen={() => setPlayerOpen((v) => !v)}
       />
       <PomodoroWidget pomodoro={pomodoro} />
+      <CustomCursor />
     </BrowserRouter>
     </AuthProvider>
   );

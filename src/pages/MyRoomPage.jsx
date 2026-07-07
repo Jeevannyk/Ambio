@@ -24,7 +24,10 @@ function MyRoomPage({ pomodoro }) {
         </p>
       </div>
 
-      <p className="my-room-status">{status}</p>
+      <p className="my-room-status">
+        {running && <span className="my-room-pulse" aria-hidden="true" />}
+        {status}
+      </p>
 
       <div className="my-room-durations">
         {Object.entries(POMODORO_MODES).map(([key, m]) => (
@@ -38,12 +41,14 @@ function MyRoomPage({ pomodoro }) {
         ))}
       </div>
 
-      <FlowDial
-        progress={progress}
-        running={running}
-        label={POMODORO_MODES[mode].label}
-        time={formatTime(secondsLeft)}
-      />
+      <div className={`flow-gauge-wrap${running ? ' flow-gauge-wrap--live' : ''}`}>
+        <FlowDial
+          progress={progress}
+          running={running}
+          label={POMODORO_MODES[mode].label}
+          time={formatTime(secondsLeft)}
+        />
+      </div>
 
       <div className="my-room-rounds">
         <span className="pomo-round-dots">
