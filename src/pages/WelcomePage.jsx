@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Sparkles, Focus, Users, Heart } from 'lucide-react';
-import { ListChecks, VideoCamera, User } from '@phosphor-icons/react';
+import { ListChecks, VideoCamera, Timer } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 
@@ -197,68 +197,59 @@ function WelcomePage() {
         </div>
       </header>
 
-      {/* ── Feature cards ────────────────────────────────── */}
+      {/* ── Feature cards (Asymmetric Bento Grid) ─────────── */}
       <div className="welcome-cards" ref={cardsRef}>
-        <button className="welcome-card" onClick={() => navigate('/tasks')}>
+        {/* Master Card: My Room (Focus Space) */}
+        <button className="welcome-card welcome-card--featured" onClick={() => navigate('/my-room')}>
           <div className="wc-shine" />
-          <div
-            className="welcome-card-top"
-            style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }}
-          >
-            <ListChecks size={28} color="rgba(255,255,255,0.92)" weight="duotone" />
-            <div
-              className="welcome-card-glow"
-              style={{ background: 'radial-gradient(circle at 65% 35%, rgba(255,255,255,0.18), transparent 65%)' }}
-            />
-          </div>
-          <div className="welcome-card-body">
-            <h3>Tasks</h3>
-            <p>Manage daily to-dos with priorities and reminders.</p>
-          </div>
-          <div className="welcome-card-footer">
-            <span className="welcome-card-cta">Open <ArrowRight size={13} /></span>
-          </div>
-        </button>
-
-        <button className="welcome-card" onClick={() => navigate('/my-room')}>
-          <div className="wc-shine" />
-          <div
-            className="welcome-card-top"
-            style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)' }}
-          >
-            <User size={28} color="rgba(255,255,255,0.92)" weight="duotone" />
-            <div
-              className="welcome-card-glow"
-              style={{ background: 'radial-gradient(circle at 65% 35%, rgba(255,255,255,0.18), transparent 65%)' }}
-            />
+          <div className="welcome-card-top">
+            <div className="welcome-card-icon-wrapper focus-icon">
+              <Timer size={26} weight="duotone" />
+            </div>
+            <div className="welcome-card-glow focus-glow" />
           </div>
           <div className="welcome-card-body">
             <h3>My Room</h3>
-            <p>Focus space with a Pomodoro timer and ambience.</p>
+            <p className="welcome-card-desc">Your personal ambient focus space. Start a Pomodoro session, choose a calming background, and tune in to built-in lo-fi channels.</p>
           </div>
           <div className="welcome-card-footer">
-            <span className="welcome-card-cta">Open <ArrowRight size={13} /></span>
+            <span className="welcome-card-cta">Step Inside <ArrowRight size={14} /></span>
           </div>
         </button>
 
-        <button className="welcome-card" onClick={() => navigate('/rooms')}>
+        {/* Compact Card: Tasks */}
+        <button className="welcome-card" onClick={() => navigate('/tasks')}>
           <div className="wc-shine" />
-          <div
-            className="welcome-card-top"
-            style={{ background: 'linear-gradient(135deg, #10b981 0%, #065f46 100%)' }}
-          >
-            <VideoCamera size={28} color="rgba(255,255,255,0.92)" weight="duotone" />
-            <div
-              className="welcome-card-glow"
-              style={{ background: 'radial-gradient(circle at 65% 35%, rgba(255,255,255,0.18), transparent 65%)' }}
-            />
+          <div className="welcome-card-top-compact">
+            <div className="welcome-card-icon-wrapper tasks-icon">
+              <ListChecks size={22} weight="duotone" />
+            </div>
+            <div className="welcome-card-glow tasks-glow" />
           </div>
           <div className="welcome-card-body">
-            <h3>Rooms</h3>
-            <p>Work alongside others in live focus rooms.</p>
+            <h3>Tasks</h3>
+            <p>Organize daily to-dos with structured priorities, tags, and reminders.</p>
           </div>
           <div className="welcome-card-footer">
-            <span className="welcome-card-cta">Open <ArrowRight size={13} /></span>
+            <span className="welcome-card-cta">Manage To-Dos <ArrowRight size={13} /></span>
+          </div>
+        </button>
+
+        {/* Compact Card: Rooms */}
+        <button className="welcome-card" onClick={() => navigate('/rooms')}>
+          <div className="wc-shine" />
+          <div className="welcome-card-top-compact">
+            <div className="welcome-card-icon-wrapper rooms-icon">
+              <VideoCamera size={22} weight="duotone" />
+            </div>
+            <div className="welcome-card-glow rooms-glow" />
+          </div>
+          <div className="welcome-card-body">
+            <h3>Focus Rooms</h3>
+            <p>Work alongside creators, developers, and students in live shared spaces.</p>
+          </div>
+          <div className="welcome-card-footer">
+            <span className="welcome-card-cta">Join a Room <ArrowRight size={13} /></span>
           </div>
         </button>
       </div>
