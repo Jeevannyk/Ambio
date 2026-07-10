@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   House,
   Notepad,
@@ -20,7 +20,11 @@ const NAV = [
 
 function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { user, signOut } = useAuth();
+
+  // Auth pages are a standalone experience — no app chrome.
+  if (pathname === '/login' || pathname === '/signup') return null;
 
   const handleSignOut = async () => {
     await signOut();

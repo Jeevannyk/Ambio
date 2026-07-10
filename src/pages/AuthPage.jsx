@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, X } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -35,6 +35,13 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   const isSignup = mode === 'signup';
+
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  const clock = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
   const switchMode = () => {
     if (anim) return;
@@ -109,11 +116,11 @@ function AuthPage() {
       >
         {/* Left — form */}
         <div className="auth-left">
-          <div className="auth-brand">Ambio</div>
+          <div className="auth-brand">◉ Ambio</div>
 
           <div className="auth-form-wrap">
-            <h1 className="auth-title">{isSignup ? 'Create an account' : 'Welcome back'}</h1>
-            <p className="auth-sub">{isSignup ? 'Sign up and get 30 day free trial' : 'Sign in to continue to your tasks'}</p>
+            <h1 className="auth-title">{isSignup ? 'Step inside' : 'Welcome back'}</h1>
+            <p className="auth-sub">{isSignup ? 'Create your account — your focus room is waiting' : 'Sign in to return to your room'}</p>
 
             <form className="auth-form" onSubmit={submit}>
               {isSignup && (
@@ -121,7 +128,7 @@ function AuthPage() {
                   <span>Full name</span>
                   <input
                     type="text"
-                    placeholder="Amélie Laurent"
+                    placeholder="Your name"
                     value={form.name}
                     required
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -133,7 +140,7 @@ function AuthPage() {
                 <span>Email</span>
                 <input
                   type="email"
-                  placeholder="amelielaurent7622@gmail.com"
+                  placeholder="you@example.com"
                   value={form.email}
                   required
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
@@ -161,7 +168,7 @@ function AuthPage() {
               {info && <p className="auth-msg auth-msg--ok">{info}</p>}
 
               <button type="submit" className="auth-submit" disabled={busy}>
-                {busy ? 'Please wait…' : isSignup ? 'Submit' : 'Sign in'}
+                {busy ? 'Please wait…' : isSignup ? 'Create account' : 'Sign in'}
               </button>
             </form>
 
@@ -182,30 +189,20 @@ function AuthPage() {
           </div>
         </div>
 
-        {/* Right — image + floating cards */}
+        {/* Right — window into the focus room */}
         <div className="auth-right">
           <button className="auth-close" onClick={() => navigate('/')} aria-label="Close"><X size={18} /></button>
 
-          <div className="auth-float auth-float--task">
-            <div className="auth-float-title">Task Review With Team</div>
-            <div className="auth-float-time">09:30am–10:00am</div>
-          </div>
+          <video className="auth-window-video" autoPlay loop muted playsInline>
+            <source src="/videos/rainy-night.mp4" type="video/mp4" />
+          </video>
+          <div className="auth-window-glow" aria-hidden="true" />
 
-          <div className="auth-week">
-            {[['Sun', 22], ['Mon', 23], ['Tue', 24], ['Wed', 25], ['Thu', 26], ['Fri', 27], ['Sat', 28]].map(([d, n], i) => (
-              <div key={d} className={'auth-week-day' + (i === 3 ? ' auth-week-day--on' : '')}>
-                <span className="auth-week-dow">{d}</span>
-                <span className="auth-week-num">{n}</span>
-              </div>
-            ))}
-          </div>
+          <div className="auth-window-clock">{clock}</div>
 
-          <div className="auth-float auth-float--meeting">
-            <div className="auth-float-title auth-float-title--dark">Daily Meeting</div>
-            <div className="auth-float-time auth-float-time--dark">12:00pm–01:00pm</div>
-            <div className="auth-avatars">
-              <span /><span /><span /><span />
-            </div>
+          <div className="auth-window-foot">
+            <span className="auth-window-dot" aria-hidden="true" />
+            <span>Rainy night · your room is ready</span>
           </div>
         </div>
       </div>

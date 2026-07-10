@@ -1,46 +1,126 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Pause, RotateCcw, Zap, Coffee } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Coffee, X } from 'lucide-react';
 import { POMODORO_MODES, formatTime } from '../hooks/usePomodoro';
 
-/*
- * Compact always-visible timer docked at the side, so the Pomodoro keeps
- * ticking (and stays visible) on every page. Hidden on the full-screen
- * workspaces — /my-room (full card), /tasks (would overlap the list), and a
- * live room (header shows it; dock would overlap the video).
- */
 function PomodoroWidget({ pomodoro }) {
   const location = useLocation();
   const path = location.pathname;
-  if (path === '/my-room' || path === '/tasks' || /^\/rooms\/.+/.test(path)) return null;
+  if (path === '/my-room' || path === '/tasks' || path === '/login' || path === '/signup' || /^\/rooms\/.+/.test(path)) return null;
 
-  const { mode, secondsLeft, running, toggle, reset } = pomodoro;
+  const { mode, secondsLeft, running, round, setMode, toggle, reset } = pomodoro;
+  const [expanded, setExpanded] = useState(false);
+
   const total = POMODORO_MODES[mode].seconds;
   const pct = Math.max(0, Math.min(100, ((total - secondsLeft) / total) * 100));
   const ModeIcon = mode === 'focus' ? Zap : Coffee;
 
+  const handlePlay = (e) => {
+    e.stopPropagation();
+    toggle();
+    setExpanded(true);
+  };
+
   return (
-    <div className={'pomo-widget' + (running ? ' pomo-widget--running' : '')}>
-      <span className="pomo-widget-badge"><ModeIcon size={14} /></span>
+    <div className="pomo-widget-wrap">
 
-      <div className="pomo-widget-info">
-        <span className="pomo-widget-mode">{POMODORO_MODES[mode].label}</span>
-        <span className="pomo-widget-time">{formatTime(secondsLeft)}</span>
-      </div>
+      {/* ── Futuristic HUD panel ─────────────────────────────── */}
+      {expanded && (
+        <div className="pomo-expand" onClick={(e) => e.stopPropagation()}>
 
-      <button className="pomo-widget-reset" onClick={reset} aria-label="Reset timer" title="Reset">
-        <RotateCcw size={14} />
-      </button>
+          {/* corner brackets */}
+          <span className="pomo-cx pomo-cx--tl" />
+          <span className="pomo-cx pomo-cx--tr" />
+          <span className="pomo-cx pomo-cx--bl" />
+          <span className="pomo-cx pomo-cx--br" />
 
-      <div className="pomo-widget-ring" style={{ '--pomo-pct': `${pct}%` }}>
+          {/* header row */}
+          <div className="pomo-expand-head">
+            <span className="pomo-expand-label">◈ POMODORO</span>
+            <button className="pomo-expand-close" onClick={() => setExpanded(false)} aria-label="Close">
+              <X size={13} />
+            </button>
+          </div>
+
+          {/* big ring */}
+          <div className="pomo-expand-ring-wrap">
+            <div className="pomo-expand-ring" style={{ '--pomo-pct': `${pct}%` }}>
+              <div className="pomo-expand-ring-inner">
+                <span className="pomo-expand-mode-lbl">{POMODORO_MODES[mode].label.toUpperCase()}</span>
+                <span className="pomo-expand-time-big">{formatTime(secondsLeft)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* mode chips */}
+          <div className="pomo-expand-chips">
+            {Object.entries(POMODORO_MODES).map(([key, m]) => (
+              <button
+                key={key}
+                className={'pomo-expand-chip' + (mode === key ? ' pomo-expand-chip--on' : '')}
+                onClick={() => setMode(key)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* round dots */}
+          <div className="pomo-expand-rounds">
+            {Array.from({ length: 4 }, (_, i) => (
+              <span
+                key={i}
+                className={
+                  'pomo-expand-dot' +
+                  (i < round - 1 || (i === round - 1 && mode !== 'focus')
+                    ? ' pomo-expand-dot--done'
+                    : '')
+                }
+              />
+            ))}
+            <span className="pomo-expand-round-text">Round {round} / 4</span>
+          </div>
+
+          {/* controls */}
+          <div className="pomo-expand-controls">
+            <button
+              className="pomo-expand-play"
+              onClick={() => toggle()}
+              aria-label={running ? 'Pause' : 'Start'}
+            >
+              {running
+                ? <Pause size={20} fill="currentColor" />
+                : <Play  size={20} fill="currentColor" />}
+            </button>
+            <button className="pomo-expand-reset" onClick={reset} aria-label="Reset">
+              <RotateCcw size={16} />
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* ── Compact pill ────────────────────────────────────── */}
+      <div className={'pomo-widget' + (running ? ' pomo-widget--running' : '') + (expanded ? ' pomo-widget--open' : '')}>
+        <span className="pomo-widget-badge"><ModeIcon size={14} /></span>
+        <div className="pomo-widget-info">
+          <span className="pomo-widget-mode">{POMODORO_MODES[mode].label}</span>
+          <span className="pomo-widget-time">{formatTime(secondsLeft)}</span>
+        </div>
         <button
-          className="pomo-widget-btn"
-          onClick={toggle}
-          aria-label={running ? 'Pause timer' : 'Start timer'}
+          className="pomo-widget-reset"
+          onClick={(e) => { e.stopPropagation(); reset(); }}
+          aria-label="Reset"
         >
-          {running ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}
+          <RotateCcw size={13} />
         </button>
+        <div className="pomo-widget-ring" style={{ '--pomo-pct': `${pct}%` }}>
+          <button className="pomo-widget-btn" onClick={handlePlay} aria-label={running ? 'Pause' : 'Start'}>
+            {running ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+          </button>
+        </div>
       </div>
+
     </div>
   );
 }
