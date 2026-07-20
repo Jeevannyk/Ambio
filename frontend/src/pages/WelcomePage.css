@@ -1,0 +1,541 @@
+/* frontend/src/pages/WelcomePage.css */
+
+/* ── Design System Variables Mapping ── */
+.ambio-workspace-container {
+  --neon-gold: #f5c518;
+  --neon-gold-dim: rgba(245, 197, 24, 0.15);
+  --neon-gold-glow: rgba(245, 197, 24, 0.04);
+
+  position: relative;
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  transition: color 0.3s ease;
+}
+
+/* ── Dynamic Mesh Grid Layout ── */
+.ambio-mesh-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at var(--mouse-x, 20%) var(--mouse-y, 15%), var(--neon-gold-glow) 0%, transparent 45%),
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 100% 100%, 40px 40px, 40px 40px;
+  opacity: 0.25;
+  transition: opacity 0.4s ease;
+}
+
+body[data-theme='dark'] .ambio-mesh-grid {
+  opacity: 0.45;
+}
+
+/* ── HUD Top Header Bar ── */
+.ambio-hud-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 3.5rem;
+}
+
+.ambio-badge-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 0.25rem 0.65rem;
+  background: var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.pulse-indicator {
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: radarPulse 2s infinite;
+}
+
+@keyframes radarPulse {
+  0% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.3; transform: scale(0.9); }
+}
+
+.ambio-chronograph {
+  font-family: monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.time-segment {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Typography and Kinetic Text Engine ── */
+.ambio-hero-cluster {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 3rem;
+}
+
+.ambio-glance-title {
+  font-family: 'Young Serif', Georgia, serif;
+  font-size: clamp(2.5rem, 7vw, 4.2rem);
+  font-weight: 400;
+  line-height: 1.08;
+  color: var(--text);
+  margin: 0 0 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.block-line {
+  display: block;
+}
+
+.dynamic-name {
+  color: var(--neon-gold);
+}
+
+.anim-word-wrapper {
+  display: inline-flex;
+  flex-wrap: wrap;
+}
+
+.anim-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(18px) scale(0.95);
+  animation: characterEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--ci) * 0.025s);
+}
+
+@keyframes characterEntrance {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ambio-ambient-descriptor {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.ambio-ambient-descriptor p {
+  margin: 0;
+  font-style: italic;
+  font-family: Georgia, serif;
+}
+
+.decorative-coordinates {
+  font-family: monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+/* ── Modern Matrix Gateway Grid ── */
+.ambio-matrix-gateways {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 3.5rem;
+}
+
+.gateway-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  color: var(--text);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s, box-shadow 0.2s;
+}
+
+.premium-span {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.premium-span .gateway-meta {
+  flex: 1;
+}
+
+.gateway-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.gateway-card.premium-span:hover {
+  border-color: var(--neon-gold);
+}
+
+/* Moving Scan Edge Effect */
+.card-scanner-line {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.premium-span .card-scanner-line {
+  background: linear-gradient(90deg, transparent, var(--neon-gold), transparent);
+}
+
+.gateway-card:hover .card-scanner-line {
+  opacity: 1;
+  animation: laserScan 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes laserScan {
+  0% { left: -50%; }
+  100% { left: 150%; }
+}
+
+.gateway-icon-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--border);
+  color: var(--text);
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.gold-glow {
+  background: var(--neon-gold-dim);
+  color: var(--neon-gold);
+}
+
+.gateway-card:hover .gateway-icon-container:not(.gold-glow) {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.gateway-meta h3 {
+  font-family: 'Young Serif', Georgia, serif;
+  font-size: 1.15rem;
+  margin: 0 0 0.35rem;
+  font-weight: 400;
+}
+
+.gateway-meta p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+}
+
+.gateway-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-top: 1.2rem;
+}
+
+.premium-span .gateway-action {
+  color: var(--neon-gold);
+  margin-top: 0;
+}
+
+.arrow-tr {
+  transition: transform 0.2s ease;
+}
+
+.gateway-card:hover .arrow-tr {
+  transform: translateX(4px);
+}
+
+/* ── Contextual Manifesto Section ── */
+.ambio-manifesto {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 3.5rem;
+}
+
+.manifesto-inner {
+  padding: 2rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.manifesto-quote {
+  font-family: 'Young Serif', Georgia, serif;
+  font-size: 1.4rem;
+  line-height: 1.4;
+  color: var(--text);
+  margin: 0 0 1.5rem;
+  border-left: 3px solid var(--accent);
+  padding-left: 1.2rem;
+}
+
+.manifesto-body-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.manifesto-body-grid p {
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Modular Pillars Architecture ── */
+.ambio-pillars {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 4rem;
+}
+
+.pillar-tile {
+  padding: 1.25rem;
+  background: rgba(var(--surface-rgb), 0.4);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.pillar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.pillar-icon {
+  color: var(--accent);
+}
+
+.pillar-tile h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+}
+
+.pillar-tile p {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Signature Deck Section ── */
+.ambio-signature-deck {
+  position: relative;
+  z-index: 2;
+  border-top: 1px dashed var(--border);
+  padding-top: 2.5rem;
+}
+
+.signature-card {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.avatar-wrapper {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--border);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.avatar-wrapper::before {
+  content: attr(data-fallback);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Young Serif', serif;
+  font-size: 1.2rem;
+  color: var(--muted);
+}
+
+.avatar-wrapper img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.signature-details {
+  flex: 1;
+}
+
+.signature-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.signature-headline h4 {
+  font-family: 'Young Serif', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  margin: 0;
+  color: var(--text);
+}
+
+.dev-tag {
+  font-family: monospace;
+  font-size: 0.62rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+}
+
+.signature-details > p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0 0 1.2rem;
+}
+
+.signature-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.craft-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.heart-pulse {
+  color: var(--danger);
+  animation: heartThrob 1.4s infinite;
+}
+
+@keyframes heartThrob {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.network-channels {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.channel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.channel-link:hover {
+  background: var(--border);
+  border-color: var(--muted);
+}
+
+/* ── Responsive Adaptation Rules ── */
+@media (max-width: 768px) {
+  .ambio-matrix-gateways {
+    grid-template-columns: 1fr;
+  }
+  .premium-span {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .premium-span .gateway-action {
+    margin-top: 0.5rem;
+  }
+  .manifesto-body-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .ambio-pillars {
+    grid-template-columns: 1fr;
+  }
+  .signature-card {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-char {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .pulse-indicator,
+  .gateway-card:hover .card-scanner-line,
+  .heart-pulse {
+    animation: none;
+  }
+}
