@@ -5,6 +5,8 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // .env stays at the repo root (shared with backend/) — look one level up.
+  envDir: path.resolve(__dirname, '..'),
   // Pin the dev server so it never silently jumps to 5174/5175 (which led to
   // viewing a different app on the wrong port). Fail loudly if 5173 is taken.
   server: {

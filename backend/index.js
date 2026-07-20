@@ -17,8 +17,10 @@
  *   LIVEKIT_URL         wss://<your-project>.livekit.cloud
  *   VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY  (reused to verify the caller)
  */
-require('dotenv').config();
 const path = require('path');
+// .env lives at the repo root so both halves can share it, regardless of the
+// directory the server is started from.
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
 const { AccessToken } = require('livekit-server-sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -124,7 +126,7 @@ app.get('/api/token', async (req, res) => {
 });
 
 // Serve the built frontend and let client-side routing handle deep links.
-const dist = path.join(__dirname, '..', 'dist');
+const dist = path.join(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(dist));
 app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 

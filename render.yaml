@@ -11,8 +11,8 @@ services:
     name: ambio
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: node server/index.js
+    buildCommand: npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend
+    startCommand: node backend/index.js
     envVars:
       # Server-side (LiveKit token minting) — never shipped to the browser.
       - key: LIVEKIT_API_KEY

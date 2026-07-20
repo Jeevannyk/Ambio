@@ -18,8 +18,9 @@ You need [Node.js](https://nodejs.org) version 20 or newer installed.
 
 1. **Get the code and install the bits it needs**
    ```bash
-   npm install
+   npm run install:all
    ```
+   (The app lives in `frontend/`, the room-pass server in `backend/` — this installs both.)
 
 2. **Add your keys (optional, but needed for login, music, and video rooms)**
 
@@ -43,7 +44,10 @@ You need [Node.js](https://nodejs.org) version 20 or newer installed.
 | `npm run dev` | Runs the app while you're working on it |
 | `npm run server` | Runs the server that powers video rooms |
 | `npm run build` | Packages the app for going live |
-| `npm run preview` | Previews that packaged version |
+| `npm run preview` | Previews that packaged version (run inside `frontend/`) |
+| `npm run install:all` | Installs frontend + backend dependencies |
+
+All commands work from the repo root; `frontend/` and `backend/` each have their own `package.json` if you prefer working inside one half.
 
 ## How it's built
 
