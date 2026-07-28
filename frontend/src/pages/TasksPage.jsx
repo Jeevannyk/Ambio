@@ -17,6 +17,7 @@ const LAYOUT_KEY = 'react-todo-app.tasks.layout';
 const VIEW_KEY = 'react-todo-app.tasks.view';
 const STREAK_KEY = 'react-todo-app.streak';
 const LASTSEEN_KEY = 'react-todo-app.lastSeen';
+const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY;
 
 function streakMessage(n) {
   if (n >= 30) return "A whole month of fire. You're unstoppable. 🔥";
@@ -206,6 +207,7 @@ function TasksPage({ theme, onThemeToggle }) {
   const [boardDrafts, setBoardDrafts] = useState({ today: '', tomorrow: '', upcoming: '', someday: '' });
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [removingIds, setRemovingIds] = useState(() => new Set()); // rows mid delete-animation
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const calendarRef = useRef(null);
@@ -380,6 +382,8 @@ function TasksPage({ theme, onThemeToggle }) {
     if (filterByStatus === 'done') filtered = filtered.filter((t) => t.done);
     const byDone = (a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1);
     return [...filtered].sort((a, b) => {
+      // Completed tasks always sink to the bottom, regardless of sort mode.
+      if (a.done !== b.done) return byDone(a, b);
       if (sortMode === 'time') {
         const left = taskDate(a)?.getTime() ?? Number.POSITIVE_INFINITY;
         const right = taskDate(b)?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -391,7 +395,7 @@ function TasksPage({ theme, onThemeToggle }) {
       } else if (sortMode === 'list') {
         if (a.list !== b.list) return a.list.localeCompare(b.list);
       }
-      return byDone(a, b);
+      return 0;
     });
   }, [tasks, search, sortMode, filterByLists, filterByTags, filterByStatus]);
 
@@ -469,7 +473,18 @@ function TasksPage({ theme, onThemeToggle }) {
     if (t && !t.done) markActiveToday(); // completing one keeps today's streak
     setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
   };
-  const removeTask = (id) => setTasks((prev) => prev.filter((t) => t.id !== id));
+  // Play the dissolve animation first, then drop the task once it finishes.
+  const removeTask = (id) => {
+    setRemovingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      setRemovingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 580);
+  };
   const removeSelectedTasks = () => {
     if (!selectedTaskIds.length) return;
     setTasks((prev) => prev.filter((t) => !selectedIds.has(t.id)));
@@ -595,7 +610,8 @@ function TasksPage({ theme, onThemeToggle }) {
         't2-row t2-row--grouped' +
         (compact ? ' t2-row--compact' : '') +
         (task.id === selectedId ? ' t2-row--active' : '') +
-        (multiSelect && selectedIds.has(task.id) ? ' t2-row--selected' : '')
+        (multiSelect && selectedIds.has(task.id) ? ' t2-row--selected' : '') +
+        (removingIds.has(task.id) ? ' t2-row--removing' : '')
       }
       onClick={() => {
         if (multiSelect) toggleTaskSelection(task.id);
@@ -825,22 +841,22 @@ function TasksPage({ theme, onThemeToggle }) {
           </div>
         </div>
         <div className="t2-tools">
-          <button
-            className={'t2-streak' + (currentStreak > 0 ? ' t2-streak--active' : '')}
-            title={`${currentStreak}-day streak`}
-            onClick={() => setCalendarOpen((v) => !v)}
-          >
-            <Flame size={15} className="t2-streak-flame" />
-            <span className="t2-streak-num">{currentStreak}</span>
-          </button>
-          <button
-            className={'t2-tool t2-tool--support' + (supportOpen ? ' t2-tool--on' : '')}
-            title="Support"
-            onClick={() => { setSupportOpen((v) => !v); setSupportSent(false); }}
-          >
-            <Headset size={16} />
-          </button>
-          <div style={{ position: 'relative' }} ref={calendarRef}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }} ref={calendarRef}>
+            <button
+              className={'t2-streak' + (currentStreak > 0 ? ' t2-streak--active' : '')}
+              title={`${currentStreak}-day streak`}
+              onClick={() => setCalendarOpen((v) => !v)}
+            >
+              <Flame size={15} className="t2-streak-flame" />
+              <span className="t2-streak-num">{currentStreak}</span>
+            </button>
+            <button
+              className={'t2-tool t2-tool--support' + (supportOpen ? ' t2-tool--on' : '')}
+              title="Support"
+              onClick={() => { setSupportOpen((v) => !v); setSupportSent(false); }}
+            >
+              <Headset size={16} />
+            </button>
             <button
               className={'t2-tool t2-tool--dot' + (calendarOpen ? ' t2-tool--on' : '')}
               title="Calendar"
@@ -928,7 +944,7 @@ function TasksPage({ theme, onThemeToggle }) {
                 <button
                   key={t.id}
                   data-tid={t.id}
-                  className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '')}
+                  className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '') + (removingIds.has(t.id) ? ' t2-row--removing' : '')}
                   style={multiSelect ? { touchAction: 'none' } : undefined}
                   onClick={() => {
                     if (!multiSelect) { setSelectedId(t.id); setDetailOpen(true); }
@@ -1200,15 +1216,15 @@ function TasksPage({ theme, onThemeToggle }) {
             <defs>
               <linearGradient id="lgMain" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#fff" />
-                <stop offset="35%" stopColor="#bae6fd" />
-                <stop offset="70%" stopColor="#38bdf8" />
-                <stop offset="100%" stopColor="#3b82f6" />
+                <stop offset="35%" stopColor="#fde68a" />
+                <stop offset="70%" stopColor="#f5c518" />
+                <stop offset="100%" stopColor="#d4a017" />
               </linearGradient>
             </defs>
             {/* wide soft glow path */}
             <path className="lightning-glow"
               d={bolt.main} pathLength="1"
-              stroke="#38bdf8" strokeWidth="22" strokeLinejoin="round" strokeLinecap="round" fill="none" />
+              stroke="#f5c518" strokeWidth="22" strokeLinejoin="round" strokeLinecap="round" fill="none" />
             {/* branch */}
             <path className="lightning-branch"
               d={bolt.branch} pathLength="1"
@@ -1227,7 +1243,9 @@ function TasksPage({ theme, onThemeToggle }) {
             <span className="t2-support-title"><Headset size={15} /> Support</span>
             <button className="t2-support-close" onClick={() => setSupportOpen(false)} aria-label="Close">×</button>
           </div>
-          {supportSent ? (
+          {!WEB3FORMS_KEY ? (
+            <p className="t2-attach-error">Support is unavailable right now — please email us instead.</p>
+          ) : supportSent ? (
             <div className="t2-support-sent">
               <CircleCheck size={32} color="#22c55e" />
               <p>Message sent! We'll get back to you soon.</p>
@@ -1240,8 +1258,8 @@ function TasksPage({ theme, onThemeToggle }) {
               className="t2-support-form"
               onSubmit={async (e) => {
                 e.preventDefault();
-                const key = import.meta.env.VITE_WEB3FORMS_KEY || '56727199-079f-43c8-a7a6-c1cad941658e';
-                if (!key) { setSupportErr('Support not configured yet.'); return; }
+                const key = WEB3FORMS_KEY;
+                if (!key) { setSupportErr('Support is unavailable right now — please email us instead.'); return; }
                 const { name, email, message } = supportForm;
                 setSupportSending(true);
                 setSupportErr('');

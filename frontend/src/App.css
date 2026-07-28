@@ -1,6 +1,6 @@
 /* ---- Custom cursor (desktop only) ---- */
 @media (hover: hover) and (pointer: fine) {
-  * { cursor: none !important; }
+  body[data-cursor='custom'] *:not(input):not(textarea):not(select):not([contenteditable]) { cursor: none !important; }
 
   .cursor-dot {
     position: fixed;
@@ -11,7 +11,7 @@
     border-radius: 50%;
     background: #fff;
     pointer-events: none;
-    z-index: 9999;
+    z-index: var(--z-cursor);
     will-change: transform;
     mix-blend-mode: difference;
   }
@@ -25,7 +25,7 @@
     border-radius: 50%;
     border: 1.5px solid rgba(255, 255, 255, 0.55);
     pointer-events: none;
-    z-index: 9998;
+    z-index: calc(var(--z-cursor) - 1);
     will-change: transform;
     transition: width 0.25s cubic-bezier(0.22,1,0.36,1),
                 height 0.25s cubic-bezier(0.22,1,0.36,1),
@@ -40,9 +40,20 @@
     height: 56px;
     top: -28px;
     left: -28px;
-    border-color: rgba(96, 165, 250, 0.7);
-    background: rgba(96, 165, 250, 0.07);
+    border-color: rgba(245, 197, 24, 0.7);
+    background: rgba(245, 197, 24, 0.07);
   }
+}
+
+/* Opt-out gate: restore native cursor everywhere and hide the custom cursor. */
+body[data-cursor='native'],
+body[data-cursor='native'] * {
+  cursor: auto !important;
+}
+
+body[data-cursor='native'] .cursor-dot,
+body[data-cursor='native'] .cursor-ring {
+  display: none;
 }
 
 /* ---- Scroll reveal ---- */
@@ -65,12 +76,23 @@
   --surface-rgb: 255, 255, 255;
   --text: #1f2937;
   --muted: #9ca3af;
+  --text-muted: var(--muted);
   --border: #e5e7eb;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
+  --brand: #f5c518;
+  --brand-strong: #fbd24b;
+  --brand-soft: rgba(245, 197, 24, 0.14);
+  --brand-contrast: #1a1400;
+  --accent: #d4a017;
+  --accent-hover: #b8860b;
   --danger: #ef4444;
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(255, 255, 255, 0.4);
+  --z-base: 1;
+  --z-panel: 40;
+  --z-overlay: 80;
+  --z-modal: 500;
+  --z-toast: 800;
+  --z-cursor: 1000;
 }
 
 body[data-theme='dark'] {
@@ -79,9 +101,10 @@ body[data-theme='dark'] {
   --surface-rgb: 31, 41, 55;
   --text: #f3f4f6;
   --muted: #6b7280;
+  --text-muted: var(--muted);
   --border: #374151;
-  --accent: #60a5fa;
-  --accent-hover: #93c5fd;
+  --accent: #f5c518;
+  --accent-hover: #fbd24b;
   --danger: #f87171;
   --glass-bg: rgba(15, 20, 35, 0.72);
   --glass-border: rgba(255, 255, 255, 0.1);
@@ -118,13 +141,13 @@ body {
    scrolls with the page). The entry fade lives on .content-area instead. */
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .content-area {
   margin-left: 96px;
   flex: 1;
-  min-height: 100vh;
+  min-height: 100dvh;
   animation: shell-fade-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
   display: flex;
   align-items: flex-start;
@@ -209,15 +232,6 @@ body {
   color: #fff;
 }
 
-.rail-item--admin-on {
-  color: #34d399;
-}
-
-.rail-item--admin-on:hover {
-  background: rgba(52, 211, 153, 0.16);
-  color: #34d399;
-}
-
 .rail-item-label {
   font-size: 0.62rem;
   font-weight: 600;
@@ -287,6 +301,12 @@ body[data-theme='dark'] .rail {
 
 .theme-toggle--global:hover {
   border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Cursor toggle sits directly below the theme toggle — small square,
+   never stretched (no bottom offset, height stays content-sized). */
+.theme-toggle--cursor {
+  top: calc(1rem + 3rem);
 }
 
 /* ---- Form ---- */
@@ -533,91 +553,82 @@ body[data-theme='dark'] .todo-form select {
   }
 }
 
+/* ── Themes Drawer Panel Architecture ─────────────────────────────────── */
 .themes-panel {
   position: fixed;
   top: 1rem;
   bottom: 1rem;
   left: calc(0.75rem + 76px + 0.75rem);
   z-index: 105;
-  width: 340px;
+  width: 320px;
   display: flex;
   flex-direction: column;
-  animation: panelSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  background: rgba(10, 14, 26, 0.92);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  padding: 1rem 1.25rem 0;
-  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.5);
-  color: #f3f4f6;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 0;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  animation: panelSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.themes-collapse-tab {
-  position: absolute;
-  right: -20px;
-  top: 72px;
-  width: 20px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 14, 26, 0.92);
-  backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-left: none;
-  border-radius: 0 10px 10px 0;
-  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
-  color: rgba(255, 255, 255, 0.45);
-  cursor: pointer;
-  transition: color 0.15s;
-}
-
-.themes-collapse-tab:hover {
-  color: #fff;
+/* Tabs Switcher */
+.themes-tabs-header {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.85rem;
 }
 
 .themes-tabs {
   display: flex;
-  gap: 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 0.9rem;
+  gap: 1rem;
 }
 
 .themes-tab {
   background: transparent;
   border: none;
-  padding: 0.4rem 0.1rem 0.6rem;
-  font-size: 0.95rem;
+  padding: 0.2rem 0 0.5rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--muted);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.themes-tab:hover {
+  color: var(--text);
 }
 
 .themes-tab--active {
-  color: #f3f4f6;
+  color: var(--text);
   font-weight: 600;
-  border-bottom-color: #60a5fa;
+  border-bottom-color: var(--accent);
 }
 
+/* Search Bar Input */
 .themes-search {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 0.5rem 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
-  margin-bottom: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  margin-bottom: 0.85rem;
   transition: border-color 0.15s;
 }
 
 .themes-search:focus-within {
-  border-color: rgba(96, 165, 250, 0.4);
+  border-color: var(--accent);
+}
+
+.search-icon {
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 .themes-search input {
@@ -626,23 +637,24 @@ body[data-theme='dark'] .todo-form select {
   background: transparent;
   border: none;
   outline: none;
-  font-size: 0.875rem;
-  color: #f3f4f6;
+  font-size: 0.82rem;
+  color: var(--text);
 }
 
 .themes-search input::placeholder {
-  color: rgba(255, 255, 255, 0.28);
+  color: var(--muted);
 }
 
-.themes-heading {
-  font-size: 0.72rem;
+.themes-section-meta {
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.35);
-  margin: 0 0 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
 }
 
+/* Scroll Area & Cards Grid */
 .themes-scroll {
   flex: 1;
   overflow-y: auto;
@@ -651,35 +663,46 @@ body[data-theme='dark'] .todo-form select {
 }
 
 .themes-empty {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
   text-align: center;
-  padding: 2rem 0;
+  padding: 3rem 1rem;
+}
+
+.empty-sparkle {
+  color: var(--muted);
+  opacity: 0.6;
 }
 
 .themes-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.9rem 0.75rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem 0.65rem;
 }
 
+/* Theme Thumbnail Cards */
 .theme-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
 .theme-card-thumb {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 10;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 2px solid transparent;
+  border: 1px solid var(--border);
   padding: 0;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: border-color 0.15s, transform 0.15s ease;
 }
 
 .theme-card-thumb video {
@@ -692,72 +715,126 @@ body[data-theme='dark'] .todo-form select {
 }
 
 .theme-card-thumb:hover {
-  transform: scale(1.04);
+  transform: translateY(-2px);
+  border-color: var(--accent);
 }
 
-.theme-card-thumb--active {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+.theme-card--active .theme-card-thumb {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+/* Active Badge Overlay */
+.theme-active-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Heart Favorite Button */
 .theme-card-fav {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 26px;
-  height: 26px;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: none;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  z-index: 2;
+  transition: color 0.15s, background 0.15s, transform 0.15s;
 }
 
 .theme-card-fav:hover {
-  background: rgba(0, 0, 0, 0.75);
-  color: #f87171;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--danger);
+  transform: scale(1.05);
 }
 
 .theme-card-fav--on {
-  color: #f87171;
+  color: var(--danger);
 }
 
-.theme-card-fav--on svg {
-  fill: #f87171;
-}
-
-.theme-card-fav--inline {
-  position: static;
-  background: transparent;
-  backdrop-filter: none;
+.theme-card-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 0.1rem;
 }
 
 .theme-card-name {
   font-size: 0.8rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--text);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.theme-card-count {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* Current Theme Bottom Bar */
 .themes-current {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border);
   margin: 0 -1.25rem;
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(var(--surface-rgb), 0.5);
+  border-radius: 0 0 16px 16px;
+}
+
+.themes-current-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.themes-current-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
 }
 
 .themes-current-name {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  color: #f3f4f6;
+  color: var(--text);
   margin: 0;
+}
+
+.theme-card-fav--inline {
+  position: static;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  color: var(--muted);
+}
+
+.theme-card-fav--inline:hover {
+  background: transparent;
+  color: var(--danger);
 }
 
 /* ---- Background video ---- */
@@ -1998,408 +2075,7 @@ body[data-theme='light'] .welcome-social {
 }
 .pomo-expand-reset:hover { color: #38bdf8; background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.45); transform: rotate(-60deg); }
 
-/* ---- Rooms page ---- */
-.rooms-page {
-  width: 100%;
-  max-width: 700px;
-}
-
-/* ── Header ──────────────────────────────────────────────────────── */
-.rooms-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.rooms-title {
-  font-size: 1.65rem;
-  font-weight: 800;
-  color: #fff;
-  margin: 0 0 0.25rem;
-  letter-spacing: -0.02em;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.rooms-admin-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #93c5fd;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  border-radius: 999px;
-  padding: 0.22rem 0.6rem;
-}
-
-.rooms-sub {
-  color: rgba(255, 255, 255, 0.42);
-  font-size: 0.875rem;
-  margin: 0;
-}
-
-.rooms-create-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 1rem;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, transform 0.2s;
-  flex-shrink: 0;
-}
-
-.rooms-create-btn:hover {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-}
-
-/* ── Join bar ────────────────────────────────────────────────────── */
-.rooms-join-bar {
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  padding: 0.5rem 0.5rem 0.5rem 1rem;
-  margin-bottom: 1.5rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.rooms-join-bar:focus-within {
-  border-color: rgba(96, 165, 250, 0.5);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.rooms-join-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-size: 0.9rem;
-  color: #fff;
-  font-family: inherit;
-}
-
-.rooms-join-input::placeholder {
-  color: rgba(255, 255, 255, 0.28);
-}
-
-.rooms-join-submit {
-  padding: 0.42rem 1rem;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 9px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.rooms-join-submit:hover {
-  background: var(--accent-hover);
-}
-
-/* ── Create form ─────────────────────────────────────────────────── */
-.room-form {
-  background: rgba(15, 20, 35, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.room-form-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-}
-
-.room-form-error {
-  color: var(--danger);
-  font-size: 0.83rem;
-  margin: 0;
-}
-
-.room-input {
-  padding: 0.55rem 0.75rem;
-  font-size: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
-  width: 100%;
-  box-sizing: border-box;
-  transition: border-color 0.18s;
-}
-
-.room-input::placeholder { color: rgba(255, 255, 255, 0.28); }
-
-.room-input:focus {
-  outline: none;
-  border-color: rgba(96, 165, 250, 0.5);
-}
-
-.room-input--small { width: 80px; }
-
-.room-form-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.room-label {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.room-form-hint {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.28);
-  margin: 0;
-}
-
-.room-submit-btn {
-  align-self: flex-end;
-  padding: 0.5rem 1.25rem;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 9px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.room-submit-btn:hover { background: var(--accent-hover); }
-
-/* ── Empty state ─────────────────────────────────────────────────── */
-.rooms-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 4rem 0;
-  color: rgba(255, 255, 255, 0.22);
-  font-size: 0.9rem;
-}
-
-/* ── Room cards grid ─────────────────────────────────────────────── */
-.rooms-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.room-card {
-  display: flex;
-  flex-direction: column;
-  background: rgba(15, 20, 35, 0.65);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  overflow: hidden;
-  transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.2s,
-    box-shadow 0.28s;
-}
-
-.room-card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
-}
-
-.room-card--joined {
-  border-color: rgba(59, 130, 246, 0.45);
-}
-
-/* Gradient banner */
-.room-card-banner {
-  position: relative;
-  height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.room-card-banner-watermark {
-  opacity: 0.18;
-  position: absolute;
-  right: 10px;
-  bottom: 6px;
-}
-
-.room-card-delete {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.3);
-  border: none;
-  color: rgba(255, 255, 255, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.room-card-delete:hover {
-  background: rgba(239, 68, 68, 0.7);
-  color: #fff;
-}
-
-/* Card body */
-.room-card-body {
-  flex: 1;
-  padding: 0.9rem 1rem 0.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.room-card-name {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-}
-
-.room-card-desc {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* Code pill */
-.room-card-code {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0.35rem 1rem 0;
-  padding: 0.36rem 0.65rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px dashed rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.room-card-code:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-.room-card-code-label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.32);
-}
-
-.room-card-code-value {
-  font-family: ui-monospace, 'SF Mono', monospace;
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #fff;
-  flex: 1;
-  text-align: left;
-}
-
-/* Footer */
-.room-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 1rem 0.9rem;
-  margin-top: 0.2rem;
-}
-
-.room-card-max {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.74rem;
-  color: rgba(255, 255, 255, 0.32);
-}
-
-.room-join-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.38rem 0.85rem;
-  border-radius: 8px;
-  border: none;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: var(--accent);
-  color: #fff;
-  transition: background 0.15s, transform 0.2s;
-}
-
-.room-join-btn:hover {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-}
-
-.room-join-btn--leave {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--danger);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-
-.room-join-btn--leave:hover {
-  background: rgba(239, 68, 68, 0.22);
-}
-
-/* ── Join section (below grid) ───────────────────────────────────── */
-.rooms-join-section {
-  margin-top: 1.5rem;
-}
-
-.rooms-join-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.3);
-  margin: 0 0 0.6rem;
-}
+/* ---- Rooms page (see RoomsPage.css) ---- */
 
 /* ── Mobile ──────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
@@ -2407,9 +2083,6 @@ body[data-theme='light'] .welcome-social {
     margin-left: 84px;
     padding: 1.25rem 1rem;
   }
-  .rooms-grid { grid-template-columns: 1fr; }
-  .rooms-header { flex-direction: column; gap: 0.5rem; }
-  .rooms-title { font-size: 1.35rem; }
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -2472,39 +2145,6 @@ body[data-theme='light'] .welcome-quote p { color: #4b5563; }
 body[data-theme='light'] .welcome-card-cta { color: rgba(0, 0, 0, 0.3); }
 body[data-theme='light'] .welcome-card:hover .welcome-card-cta { color: rgba(0, 0, 0, 0.6); }
 body[data-theme='light'] .welcome-quote { background: rgba(59, 130, 246, 0.08); }
-
-/* ── Rooms ───────────────────────────────────────────────────────── */
-body[data-theme='light'] .rooms-title,
-body[data-theme='light'] .room-card-name,
-body[data-theme='light'] .room-card-code-value { color: #1f2937; }
-body[data-theme='light'] .rooms-sub,
-body[data-theme='light'] .room-card-desc,
-body[data-theme='light'] .room-card-max,
-body[data-theme='light'] .rooms-empty,
-body[data-theme='light'] .room-label { color: #6b7280; }
-body[data-theme='light'] .room-form-title { color: #1f2937; }
-body[data-theme='light'] .room-card {
-  background: rgba(255, 255, 255, 0.82);
-  border-color: rgba(0, 0, 0, 0.08);
-}
-body[data-theme='light'] .room-card-code {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.12);
-  color: #4b5563;
-}
-body[data-theme='light'] .room-card-code-label { color: #9ca3af; }
-body[data-theme='light'] .rooms-join-bar {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.1);
-}
-body[data-theme='light'] .rooms-join-input { color: #1f2937; }
-body[data-theme='light'] .rooms-join-input::placeholder { color: #9ca3af; }
-body[data-theme='light'] .room-input {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: #1f2937;
-}
-body[data-theme='light'] .room-form { background: rgba(255, 255, 255, 0.82); border-color: rgba(0, 0, 0, 0.08); }
 
 /* ── My Room ─────────────────────────────────────────────────────── */
 body[data-theme='light'] .my-room-page {

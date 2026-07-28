@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, X } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import './AuthPage.css';
@@ -26,7 +26,8 @@ function AppleIcon() {
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState('signup'); // 'signup' | 'signin'
+  const { pathname } = useLocation();
+  const [mode, setMode] = useState(() => (pathname === '/login' ? 'signin' : 'signup')); // 'signup' | 'signin'
   const [anim, setAnim] = useState(''); // '' | 'out' | 'in' | 'exit'
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -35,6 +36,11 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   const isSignup = mode === 'signup';
+
+  // Keep the mode in sync if the route changes while mounted (/login ↔ /signup).
+  useEffect(() => {
+    setMode(pathname === '/login' ? 'signin' : 'signup');
+  }, [pathname]);
 
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -185,7 +191,6 @@ function AuthPage() {
                 {isSignup ? 'Sign in' : 'Sign up'}
               </button>
             </span>
-            <button type="button" className="auth-foot-terms">Terms &amp; Conditions</button>
           </div>
         </div>
 

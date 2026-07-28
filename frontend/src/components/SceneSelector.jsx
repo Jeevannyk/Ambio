@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Heart, ChevronLeft } from 'lucide-react';
+import { Search, Heart, Sparkles, Check } from 'lucide-react';
 
 const FAV_KEY = 'react-todo-app.favoriteThemes';
 
@@ -11,18 +11,6 @@ function loadFavs() {
   }
 }
 
-/*
- * Props:
- *   scenes      : Array<{ id, label, icon, gradient, srcs }>
- *   activeIndex : number
- *   onSelect    : (index: number) => void
- *   open        : boolean — controlled by the sidebar's Themes button
- *   onClose     : () => void
- *
- * LifeAt-style light panel: tabs, search, thumbnail grid with hearts,
- * and a current-theme bar. Thumbnails show the first video frame
- * (preload="metadata") over the scene gradient as fallback.
- */
 function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
   const [tab, setTab] = useState('videos');
   const [query, setQuery] = useState('');
@@ -47,80 +35,108 @@ function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
 
   return (
     <aside className="themes-panel" aria-label="Theme selector">
-      <button className="themes-collapse-tab" onClick={onClose} aria-label="Close themes panel">
-        <ChevronLeft size={14} />
-      </button>
-
-      <div className="themes-tabs">
-        <button
-          className={'themes-tab' + (tab === 'videos' ? ' themes-tab--active' : '')}
-          onClick={() => setTab('videos')}
-        >
-          Videos
-        </button>
-        <button
-          className={'themes-tab' + (tab === 'favorites' ? ' themes-tab--active' : '')}
-          onClick={() => setTab('favorites')}
-        >
-          Favorites
-        </button>
+      {/* Header Tabs */}
+      <div className="themes-tabs-header">
+        <div className="themes-tabs">
+          <button
+            className={'themes-tab' + (tab === 'videos' ? ' themes-tab--active' : '')}
+            onClick={() => setTab('videos')}
+          >
+            All Themes
+          </button>
+          <button
+            className={'themes-tab' + (tab === 'favorites' ? ' themes-tab--active' : '')}
+            onClick={() => setTab('favorites')}
+          >
+            Favorites ({favs.length})
+          </button>
+        </div>
       </div>
 
+      {/* Search Input Bar */}
       <div className="themes-search">
-        <Search size={15} />
+        <Search size={14} className="search-icon" />
         <input
-          placeholder="Search themes"
+          placeholder="Filter ambiance..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </div>
 
-      <p className="themes-heading">Featured Themes</p>
+      <div className="themes-section-meta">
+        <span>{tab === 'favorites' ? 'Saved Atmospheres' : 'Available Atmospheres'}</span>
+      </div>
 
+      {/* Themes Video Grid */}
       <div className="themes-scroll">
         {visible.length === 0 ? (
-          <p className="themes-empty">
-            {tab === 'favorites' ? 'No favorites yet — tap ♥ on a theme.' : 'No themes match.'}
-          </p>
+          <div className="themes-empty">
+            <Sparkles size={24} className="empty-sparkle" />
+            <p>{tab === 'favorites' ? 'No favorite themes saved yet. Tap the heart icon on any card.' : 'No matching video themes found.'}</p>
+          </div>
         ) : (
           <div className="themes-grid">
-            {visible.map((scene) => (
-              <div className="theme-card" key={scene.id}>
-                <button
-                  className={
-                    'theme-card-thumb' + (scene.index === activeIndex ? ' theme-card-thumb--active' : '')
-                  }
-                  style={{ background: scene.gradient }}
-                  onClick={() => onSelect(scene.index)}
-                  aria-pressed={scene.index === activeIndex}
-                  aria-label={`Switch to ${scene.label}`}
-                >
-                  <video src={scene.srcs[0]} muted playsInline preload="metadata" tabIndex={-1} />
-                </button>
-                <button
-                  className={'theme-card-fav' + (favs.includes(scene.id) ? ' theme-card-fav--on' : '')}
-                  onClick={() => toggleFav(scene.id)}
-                  aria-label={favs.includes(scene.id) ? `Unfavorite ${scene.label}` : `Favorite ${scene.label}`}
-                >
-                  <Heart size={15} />
-                </button>
-                <p className="theme-card-name">{scene.label}</p>
-              </div>
-            ))}
+            {visible.map((scene) => {
+              const isActive = scene.index === activeIndex;
+              const isFav = favs.includes(scene.id);
+
+              return (
+                <div className={'theme-card' + (isActive ? ' theme-card--active' : '')} key={scene.id}>
+                  <button
+                    className="theme-card-thumb"
+                    style={{ background: scene.gradient }}
+                    onClick={() => onSelect(scene.index)}
+                    aria-pressed={isActive}
+                    aria-label={`Switch to ${scene.label}`}
+                  >
+                    <video src={scene.srcs[0]} muted playsInline preload="metadata" tabIndex={-1} />
+
+                    {/* Active Overlay Check Indicator */}
+                    {isActive && (
+                      <span className="theme-active-badge">
+                        <Check size={12} /> Active
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    className={'theme-card-fav' + (isFav ? ' theme-card-fav--on' : '')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFav(scene.id);
+                    }}
+                    aria-label={isFav ? `Unfavorite ${scene.label}` : `Favorite ${scene.label}`}
+                  >
+                    <Heart size={13} fill={isFav ? 'currentColor' : 'none'} />
+                  </button>
+
+                  <div className="theme-card-info">
+                    <p className="theme-card-name">{scene.label}</p>
+                    <span className="theme-card-count">{scene.srcs.length} clips</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      <div className="themes-current">
-        <p className="themes-current-name">{active.label}</p>
-        <button
-          className={'theme-card-fav theme-card-fav--inline' + (favs.includes(active.id) ? ' theme-card-fav--on' : '')}
-          onClick={() => toggleFav(active.id)}
-          aria-label={favs.includes(active.id) ? `Unfavorite ${active.label}` : `Favorite ${active.label}`}
-        >
-          <Heart size={16} />
-        </button>
-      </div>
+      {/* Current Theme Footer Bar */}
+      {active && (
+        <div className="themes-current">
+          <div className="themes-current-meta">
+            <span className="themes-current-label">Current Scene</span>
+            <p className="themes-current-name">{active.label}</p>
+          </div>
+          <button
+            className={'theme-card-fav theme-card-fav--inline' + (favs.includes(active.id) ? ' theme-card-fav--on' : '')}
+            onClick={() => toggleFav(active.id)}
+            aria-label={favs.includes(active.id) ? `Unfavorite ${active.label}` : `Favorite ${active.label}`}
+          >
+            <Heart size={15} fill={favs.includes(active.id) ? 'currentColor' : 'none'} />
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

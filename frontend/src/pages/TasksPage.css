@@ -357,6 +357,72 @@
 }
 .t2-row--selected { background: rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.2); }
 
+/* Delete: shatter into a grid of bits that shrink away, then collapse the gap.
+   The mask tiles the row into dots; --t2bit shrinks each dot's radius to 0 so
+   the row disintegrates into particles. Needs @property so the length animates;
+   where unsupported, the opacity/transform/height still animate as a fallback. */
+@property --t2bit {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.t2-row--removing {
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: center left;
+  --t2bit: 7px;
+  -webkit-mask-image: radial-gradient(circle at center, #000 var(--t2bit), transparent calc(var(--t2bit) + 0.5px));
+  mask-image: radial-gradient(circle at center, #000 var(--t2bit), transparent calc(var(--t2bit) + 0.5px));
+  -webkit-mask-size: 9px 9px;
+  mask-size: 9px 9px;
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  animation: t2RowShatter 0.58s cubic-bezier(0.33, 0, 0.2, 1) forwards;
+}
+
+@keyframes t2RowShatter {
+  0% {
+    --t2bit: 7px;
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+    max-height: 80px;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+  50% {
+    --t2bit: 3px;
+    opacity: 1;
+    transform: scale(0.99) translate(4px, -2px);
+  }
+  80% {
+    --t2bit: 1px;
+    opacity: 0.85;
+    transform: scale(0.97) translate(10px, -5px);
+    max-height: 80px;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+  100% {
+    --t2bit: 0px;
+    opacity: 0;
+    transform: scale(0.94) translate(18px, -8px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t2-row--removing {
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation-duration: 0.01s;
+  }
+}
+
 .t2-row-text { display: flex; flex-direction: column; min-width: 0; }
 .t2-row-title { font-size: 0.9rem; font-weight: 500; }
 .t2-row-title--done { text-decoration: line-through; color: var(--muted); }

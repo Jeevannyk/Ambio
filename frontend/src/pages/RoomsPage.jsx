@@ -1,20 +1,13 @@
+// frontend/src/pages/RoomsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Users, LogIn, Trash2, Copy, Check, Shield } from 'lucide-react';
-import { VideoCamera } from '@phosphor-icons/react';
+import { Plus, X, Users, LogIn, Trash2, Copy, Check, Shield, ArrowRight, Radio } from 'lucide-react';
+import { VideoCamera, Key } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
 import { useScrollReveal } from '../hooks/useScrollReveal';
+import './RoomsPage.css';
 
 const ROOMS_KEY = 'react-todo-app.rooms';
-
-const CARD_GRADIENTS = [
-  'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-  'linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%)',
-  'linear-gradient(135deg, #10b981 0%, #065f46 100%)',
-  'linear-gradient(135deg, #f59e0b 0%, #92400e 100%)',
-  'linear-gradient(135deg, #06b6d4 0%, #155e75 100%)',
-  'linear-gradient(135deg, #f43f5e 0%, #9f1239 100%)',
-];
 
 function genCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -81,145 +74,203 @@ function RoomsPage() {
     setRooms((prev) => prev.filter((r) => r.id !== id));
   };
 
+  // Cursor-tracked spotlight: publish pointer position as CSS vars per card.
+  const handleSpotlight = (e) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+    card.style.setProperty('--my', `${e.clientY - rect.top}px`);
+  };
+
   useScrollReveal();
 
-  return (
-    <div className="rooms-page">
-      {/* ── Header ───────────────────────────────────────── */}
-      <div className="rooms-header">
-        <div>
-          <h2 className="rooms-title">
-            Focus Rooms
-            {admin && <span className="rooms-admin-badge"><Shield size={11} /> Admin</span>}
-          </h2>
-          <p className="rooms-sub">
-            {admin
-              ? 'Create and manage focus rooms, or join one.'
-              : 'Join a focus room with an invite code.'}
-          </p>
-        </div>
-        {admin && (
-          <button className="rooms-create-btn" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? <X size={15} /> : <Plus size={15} />}
-            {showForm ? 'Cancel' : 'New Room'}
-          </button>
-        )}
-      </div>
+  const totalSeats = rooms.reduce((sum, r) => sum + (r.max || 0), 0);
 
-      {/* ── Create form ──────────────────────────────────── */}
-      {admin && showForm && (
-        <form className="room-form" onSubmit={createRoom}>
-          <h3 className="room-form-title">New Room</h3>
-          {error && <p className="room-form-error">{error}</p>}
-          <input
-            className="room-input"
-            placeholder="Room name"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          />
-          <input
-            className="room-input"
-            placeholder="Description (optional)"
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-          <div className="room-form-row">
-            <label className="room-label">Max participants</label>
-            <input
-              type="number"
-              min="2"
-              max="6"
-              className="room-input room-input--small"
-              value={form.max}
-              onChange={(e) => setForm((f) => ({ ...f, max: e.target.value }))}
-            />
+  return (
+    <div className="rooms-container">
+      {/* ── Header: title, live status, network stats ──────────── */}
+      <header className="rooms-hud-bar">
+        <div className="rooms-hud-title">
+          <div className="rooms-live-indicator">
+            <span className="live-pulse" />
+            <Radio size={14} className="radio-icon" />
+            <span>LIVE NETWORK</span>
           </div>
-          <p className="room-form-hint">Best with 2–6 people — video quality drops with larger groups.</p>
-          <button type="submit" className="room-submit-btn">Create Room</button>
-        </form>
+          <h1>Focus Rooms</h1>
+          <div className="rooms-stats">
+            <span className="stat-chip">
+              <strong>{rooms.length}</strong> {rooms.length === 1 ? 'room' : 'rooms'}
+            </span>
+            <span className="stat-chip">
+              <strong>{totalSeats}</strong> seats
+            </span>
+          </div>
+        </div>
+
+        <div className="rooms-hud-actions">
+          {admin && (
+            <button
+              className={`rooms-admin-toggle${showForm ? ' is-open' : ''}`}
+              onClick={() => setShowForm((v) => !v)}
+            >
+              {showForm ? <X size={15} /> : <Plus size={15} />}
+              <span>{showForm ? 'Close' : 'New Room'}</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* ── Quick join by code ─────────────────────────────────── */}
+      <form className="rooms-quickjoin" onSubmit={joinByCode}>
+        <span className="quickjoin-label">
+          <Key size={15} weight="duotone" />
+          Have a code?
+        </span>
+        <input
+          className="quickjoin-input"
+          placeholder="ABC123"
+          maxLength={6}
+          value={joinCode}
+          onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+          aria-label="Room access code"
+        />
+        <button type="submit" className="quickjoin-btn" disabled={!joinCode.trim()}>
+          <span>Join</span>
+          <ArrowRight size={14} />
+        </button>
+      </form>
+
+      {/* ── Admin Room Creation Panel (smooth expand/collapse) ── */}
+      {admin && (
+        <div className={`rooms-creator-wrap${showForm ? ' is-open' : ''}`} aria-hidden={!showForm}>
+          <div className="rooms-creator-inner">
+            <form className="rooms-creator-panel" onSubmit={createRoom}>
+              <div className="panel-header">
+                <h3><Shield size={14} /> Initialize Workspace Channel</h3>
+                <p className="panel-sub">Configure capacity and parameters for live session.</p>
+              </div>
+              {error && <p className="rooms-panel-error">{error}</p>}
+              <div className="panel-grid">
+                <div className="panel-field">
+                  <label>Room Identifier</label>
+                  <input
+                    className="rooms-input"
+                    placeholder="e.g. Quiet Library, CS Lab"
+                    value={form.name}
+                    tabIndex={showForm ? 0 : -1}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+                <div className="panel-field">
+                  <label>Capacity limit (2–6)</label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="6"
+                    className="rooms-input"
+                    value={form.max}
+                    tabIndex={showForm ? 0 : -1}
+                    onChange={(e) => setForm((f) => ({ ...f, max: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="panel-field">
+                <label>Purpose / Rules</label>
+                <input
+                  className="rooms-input"
+                  placeholder="e.g. Cameras optional, silent study only..."
+                  value={form.description}
+                  tabIndex={showForm ? 0 : -1}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+              <div className="panel-footer">
+                <span className="quality-note">Optimal performance is achieved at 2–5 concurrent video streams.</span>
+                <button type="submit" className="rooms-submit-btn" tabIndex={showForm ? 0 : -1}>
+                  Deploy Channel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
-      {/* ── Grid / Empty ─────────────────────────────────── */}
+      {/* ── Rooms Grid ─────────────────────────────────────────── */}
       {rooms.length === 0 ? (
-        <div className="rooms-empty">
-          <VideoCamera size={48} weight="duotone" />
-          <p>{admin ? 'No rooms yet. Create one above.' : 'No rooms available. Ask an admin, or join with an invite code.'}</p>
+        <div className="rooms-empty-state">
+          <VideoCamera size={44} weight="duotone" className="empty-icon" />
+          <h3>No active channels running</h3>
+          <p>{admin ? 'Deploy a new room using the control bar above.' : 'Request a room code from an admin, or join directly below.'}</p>
         </div>
       ) : (
         <div className="rooms-grid">
-          {rooms.map((room, i) => (
-
-            <div
+          {rooms.map((room, index) => (
+            <article
               key={room.id}
-              className={`room-card reveal${room.joined ? ' room-card--joined' : ''}`}
+              className="room-card"
+              style={{ '--i': index }}
+              onMouseMove={handleSpotlight}
             >
-              {/* Gradient banner */}
-              <div
-                className="room-card-banner"
-                style={{ background: CARD_GRADIENTS[i % CARD_GRADIENTS.length] }}
-              >
-                <VideoCamera
-                  size={56}
-                  weight="duotone"
-                  className="room-card-banner-watermark"
-                />
+              <div className="card-spotlight" />
+
+              <div className="card-top">
+                <div className="card-badge">
+                  <span className="card-badge-icon">
+                    <VideoCamera size={18} weight="duotone" />
+                  </span>
+                  <span className="card-badge-label">Open channel</span>
+                </div>
                 {admin && (
                   <button
-                    className="room-card-delete"
+                    className="card-delete-btn"
                     onClick={() => deleteRoom(room.id)}
-                    aria-label="Delete room"
+                    title="Terminate Room"
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={13} />
                   </button>
                 )}
               </div>
 
-              {/* Body */}
-              <div className="room-card-body">
-                <h3 className="room-card-name">{room.name}</h3>
-                {room.description && (
-                  <p className="room-card-desc">{room.description}</p>
-                )}
+              <div className="card-body">
+                <h3 className="room-name">{room.name}</h3>
+                <p className="room-desc">{room.description || 'General study and deep focus channel.'}</p>
               </div>
 
-              {/* Code pill */}
-              <button
-                className="room-card-code"
-                onClick={() => copyCode(room.id)}
-                title="Copy room code"
-              >
-                <span className="room-card-code-label">Code</span>
-                <span className="room-card-code-value">{room.id}</span>
-                {copiedId === room.id ? <Check size={13} /> : <Copy size={13} />}
-              </button>
-
-              {/* Footer */}
-              <div className="room-card-footer">
-                <span className="room-card-max">
-                  <Users size={12} /> Max {room.max}
+              <div className="card-seats">
+                <span className="seat-dots" aria-hidden="true">
+                  {Array.from({ length: room.max }).map((_, i) => (
+                    <span key={i} className="seat-dot" style={{ '--d': i }} />
+                  ))}
                 </span>
-                <button className="room-join-btn" onClick={() => enterRoom(room.id)}>
-                  <LogIn size={13} /> Join
+                <span className="seat-count">
+                  <Users size={12} /> {room.max} seats
+                </span>
+              </div>
+
+              <div className="card-bottom">
+                <button
+                  className="code-copy-btn"
+                  onClick={() => copyCode(room.id)}
+                  title="Copy room invite code"
+                >
+                  <span className="code-label">CODE</span>
+                  <span className="code-val">{room.id}</span>
+                  <span className="copy-icon" key={copiedId === room.id ? 'done' : 'idle'}>
+                    {copiedId === room.id
+                      ? <Check size={13} className="copied-check" />
+                      : <Copy size={13} />}
+                  </span>
+                </button>
+
+                <button className="join-action-btn" onClick={() => enterRoom(room.id)}>
+                  <LogIn size={14} />
+                  <span>Connect</span>
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
-
-      {/* ── Join bar (secondary action — below grid) ──────── */}
-      <div className="rooms-join-section reveal">
-        <p className="rooms-join-label">Have an invite code?</p>
-        <form className="rooms-join-bar" onSubmit={joinByCode}>
-          <input
-            className="rooms-join-input"
-            placeholder="Enter code to join a private room…"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-          />
-          <button type="submit" className="rooms-join-submit">Join →</button>
-        </form>
-      </div>
     </div>
   );
 }

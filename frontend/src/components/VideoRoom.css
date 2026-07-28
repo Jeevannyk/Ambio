@@ -10,7 +10,7 @@
   background: #0f0f0f;
   display: flex;
   flex-direction: column;
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
   color: #fff;
   animation: vrFadeIn 0.3s ease;
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, MousePointer2, MousePointerBan } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import CustomCursor from './components/CustomCursor';
 import BackgroundVideo from './components/BackgroundVideo';
@@ -55,6 +55,38 @@ const SCENES = [
   },
 ];
 
+// Branded route/auth loader — centered gold pulsing dot. Inline styles (plus an
+// injected keyframe) so it works without any CSS-file dependency.
+function RouteLoader() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading"
+      style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}
+    >
+      <style>{`
+        @keyframes ambio-route-pulse {
+          0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(245, 197, 24, 0.45); }
+          50% { transform: scale(1.35); opacity: 0.75; box-shadow: 0 0 0 12px rgba(245, 197, 24, 0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ambio-route-loader-dot { animation: none; }
+        }
+      `}</style>
+      <span
+        className="ambio-route-loader-dot"
+        style={{
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          background: 'var(--brand, #f5c518)',
+          animation: 'ambio-route-pulse 1.2s ease-in-out infinite',
+        }}
+      />
+    </div>
+  );
+}
+
 // Global dark-mode toggle — hidden inside a live room for an immersive,
 // distraction-free view (it's also covered by the room overlay there).
 function GlobalThemeToggle({ theme, onToggle }) {
@@ -77,9 +109,25 @@ function GlobalThemeToggle({ theme, onToggle }) {
 // Block protected pages until the user has signed in; bounce to /login.
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return null; // wait for the session check before deciding
+  if (loading) return <RouteLoader />; // wait for the session check before deciding
   if (!user) return <Navigate to="/login" replace />;
   return children;
+}
+
+// Custom-cursor opt-out toggle — stacked above the global theme toggle and
+// hidden on the same routes (live rooms, auth pages, /tasks).
+function GlobalCursorToggle({ enabled, onToggle }) {
+  const { pathname } = useLocation();
+  if (/^\/rooms\/.+/.test(pathname) || pathname === '/login' || pathname === '/signup' || pathname === '/tasks') return null;
+  return (
+    <button
+      className="theme-toggle theme-toggle--global theme-toggle--cursor"
+      onClick={onToggle}
+      aria-label="Toggle custom cursor"
+    >
+      {enabled ? <MousePointer2 size={18} /> : <MousePointerBan size={18} />}
+    </button>
+  );
 }
 
 function App() {
@@ -88,12 +136,19 @@ function App() {
   const [customVideoId, setCustomVideoId] = useState(null);
   const [themesOpen, setThemesOpen] = useState(false);
   const [playerOpen, setPlayerOpen] = useState(false);
+  const [cursorEnabled, setCursorEnabled] = useState(() => localStorage.getItem('ambio.cursor') !== 'off');
+  const [cursorMotionOk] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const pomodoro = usePomodoro();
 
   useEffect(() => {
     localStorage.setItem(THEME_KEY, theme);
     document.body.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('ambio.cursor', cursorEnabled ? 'on' : 'off');
+    document.body.dataset.cursor = cursorEnabled ? 'custom' : 'native';
+  }, [cursorEnabled]);
 
   const handleThemeToggle = (e) => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -130,7 +185,7 @@ function App() {
         />
 
         <main className="content-area">
-          <Suspense fallback={null}>
+          <Suspense fallback={<RouteLoader />}>
             <Routes>
               <Route path="/login" element={<AuthPage />} />
               <Route path="/signup" element={<AuthPage />} />
@@ -145,6 +200,7 @@ function App() {
       </div>
 
       <GlobalThemeToggle theme={theme} onToggle={handleThemeToggle} />
+      <GlobalCursorToggle enabled={cursorEnabled} onToggle={() => setCursorEnabled((v) => !v)} />
 
       <SceneSelector
         scenes={SCENES}
@@ -162,7 +218,7 @@ function App() {
         onToggleOpen={() => setPlayerOpen((v) => !v)}
       />
       <PomodoroWidget pomodoro={pomodoro} />
-      <CustomCursor />
+      {cursorEnabled && cursorMotionOk && <CustomCursor />}
     </BrowserRouter>
     </AuthProvider>
   );

@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function CustomCursor() {
   const dotRef = useRef(null);
   const ringRef = useRef(null);
+  // No custom cursor when the user prefers reduced motion.
+  const [reducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   useEffect(() => {
+    if (reducedMotion) return;
     const dot = dotRef.current;
     const ring = ringRef.current;
     if (!dot || !ring) return;
@@ -51,7 +54,9 @@ export default function CustomCursor() {
       document.removeEventListener('mouseout', onOut);
       cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [reducedMotion]);
+
+  if (reducedMotion) return null;
 
   return (
     <>

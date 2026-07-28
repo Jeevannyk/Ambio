@@ -109,7 +109,7 @@ function WelcomePage() {
         </h1>
         <div className="ambio-ambient-descriptor">
           <p>The rain&rsquo;s on. Your desk is ready.</p>
-          <span className="decorative-coordinates">47.6062&deg; N, 122.3321&deg; W</span>
+          <span className="decorative-coordinates">{now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
         </div>
       </section>
 
@@ -212,8 +212,8 @@ function WelcomePage() {
         <div className="signature-card">
           <div className="avatar-wrapper" data-fallback="J">
             <img
-              src="/photo.png"
-              alt="Jeevan Portfolio Avatar"
+              src="/photo.jpg"
+              alt="Portrait of Jeevan"
               onError={(e) => {
                 e.target.style.display = 'none';
               }}
@@ -222,7 +222,7 @@ function WelcomePage() {
           <div className="signature-details">
             <div className="signature-headline">
               <h4>Built by Jeevan</h4>
-              <span className="dev-tag">Core Architect</span>
+              <span className="dev-tag">Creator of Ambio</span>
             </div>
             <p>
               A student who got tired of switching between apps to stay focused — so he

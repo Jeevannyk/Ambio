@@ -9,7 +9,7 @@
   justify-content: center;
   background: #0b0d12;
   color: #f3f4f6;
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
   padding: 1.5rem;
 }
 
@@ -189,7 +189,7 @@
   flex-direction: column;
   background: transparent; /* let the ambient wallpaper show through */
   color: #f3f4f6;
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
 }
 
 /* Audio-reactive neon frame — sits just inside the room edges and pulses
