@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Check } from 'lucide-react';
+import { Lock, Check } from '@phosphor-icons/react';
 
 /*
  * "Move to…" — single-select list picker. Clicking a list applies it and

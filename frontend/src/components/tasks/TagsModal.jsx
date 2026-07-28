@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check } from '@phosphor-icons/react';
 
 // Tag palette (name + row tint).
 const TAGS = [

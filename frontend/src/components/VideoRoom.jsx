@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Mic, MicOff, Video, VideoOff, Monitor, MonitorOff,
-  MessageSquare, Hand, PhoneOff, Smile, X, Send, Users,
-} from 'lucide-react';
+  Microphone, MicrophoneSlash, VideoCamera, VideoCameraSlash, Monitor, Screencast,
+  Chat, Hand, PhoneX, Smiley, X, PaperPlaneTilt, Users,
+} from '@phosphor-icons/react';
 import './VideoRoom.css';
 
 /* ── Simulated participants ───────────────────────────────────────────── */
@@ -251,7 +251,7 @@ function VideoRoom({ room, onLeave }) {
                   {handRaised && <span className="vr-tile-hand">🖐️</span>}
                   {!micOn && (
                     <span className="vr-tile-muted">
-                      <MicOff size={12} color="#fff" />
+                      <MicrophoneSlash size={12} color="#fff" />
                     </span>
                   )}
                 </div>
@@ -269,7 +269,7 @@ function VideoRoom({ room, onLeave }) {
                   <div className="vr-tile-indicators">
                     {p.muted && (
                       <span className="vr-tile-muted">
-                        <MicOff size={12} color="#fff" />
+                        <MicrophoneSlash size={12} color="#fff" />
                       </span>
                     )}
                   </div>
@@ -346,7 +346,7 @@ function VideoRoom({ room, onLeave }) {
                 autoFocus
               />
               <button className="vr-chat-send" onClick={() => sendMessage(chatInput)}>
-                <Send size={16} />
+                <PaperPlaneTilt size={16} />
               </button>
             </div>
           </div>
@@ -358,7 +358,7 @@ function VideoRoom({ room, onLeave }) {
         {/* Mic */}
         <button className={`vr-ctrl-btn${!micOn ? ' vr-ctrl-btn--off' : ''}`} onClick={toggleMic}>
           <span className="vr-ctrl-icon">
-            {micOn ? <Mic size={20} /> : <MicOff size={20} />}
+            {micOn ? <Microphone size={20} /> : <MicrophoneSlash size={20} />}
           </span>
           <span className="vr-ctrl-label">{micOn ? 'Mute' : 'Unmute'}</span>
         </button>
@@ -366,7 +366,7 @@ function VideoRoom({ room, onLeave }) {
         {/* Camera */}
         <button className={`vr-ctrl-btn${!camOn ? ' vr-ctrl-btn--off' : ''}`} onClick={toggleCam}>
           <span className="vr-ctrl-icon">
-            {camOn ? <Video size={20} /> : <VideoOff size={20} />}
+            {camOn ? <VideoCamera size={20} /> : <VideoCameraSlash size={20} />}
           </span>
           <span className="vr-ctrl-label">{camOn ? 'Stop Video' : 'Start Video'}</span>
         </button>
@@ -376,7 +376,7 @@ function VideoRoom({ room, onLeave }) {
         {/* Screen Share */}
         <button className={`vr-ctrl-btn${screenSharing ? ' vr-ctrl-btn--active' : ''}`} onClick={toggleScreenShare}>
           <span className="vr-ctrl-icon">
-            {screenSharing ? <MonitorOff size={20} /> : <Monitor size={20} />}
+            {screenSharing ? <Screencast size={20} /> : <Monitor size={20} />}
           </span>
           <span className="vr-ctrl-label">{screenSharing ? 'Stop Share' : 'Share Screen'}</span>
         </button>
@@ -386,14 +386,14 @@ function VideoRoom({ room, onLeave }) {
           className={`vr-ctrl-btn${emojiPickerOpen ? ' vr-ctrl-btn--active' : ''}`}
           onClick={() => setEmojiPickerOpen((v) => !v)}
         >
-          <span className="vr-ctrl-icon"><Smile size={20} /></span>
+          <span className="vr-ctrl-icon"><Smiley size={20} /></span>
           <span className="vr-ctrl-label">Reactions</span>
         </button>
 
         {/* Chat */}
         <button className={`vr-ctrl-btn${chatOpen ? ' vr-ctrl-btn--active' : ''}`} onClick={() => setChatOpen((v) => !v)}>
           <span className="vr-ctrl-icon">
-            <MessageSquare size={20} />
+            <Chat size={20} />
           </span>
           <span className="vr-ctrl-label">Chat</span>
         </button>
@@ -408,7 +408,7 @@ function VideoRoom({ room, onLeave }) {
 
         {/* Leave */}
         <button className="vr-ctrl-btn vr-ctrl-btn--leave" onClick={handleLeave}>
-          <span className="vr-ctrl-icon"><PhoneOff size={20} /></span>
+          <span className="vr-ctrl-icon"><PhoneX size={20} /></span>
           <span className="vr-ctrl-label">Leave</span>
         </button>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Heart, Sparkles, Check } from 'lucide-react';
+import { MagnifyingGlass, Heart, Sparkle, Check } from '@phosphor-icons/react';
 
 const FAV_KEY = 'react-todo-app.favoriteThemes';
 
@@ -55,7 +55,7 @@ function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
 
       {/* Search Input Bar */}
       <div className="themes-search">
-        <Search size={14} className="search-icon" />
+        <MagnifyingGlass size={14} className="search-icon" />
         <input
           placeholder="Filter ambiance..."
           value={query}
@@ -71,7 +71,7 @@ function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
       <div className="themes-scroll">
         {visible.length === 0 ? (
           <div className="themes-empty">
-            <Sparkles size={24} className="empty-sparkle" />
+            <Sparkle size={24} className="empty-sparkle" />
             <p>{tab === 'favorites' ? 'No favorite themes saved yet. Tap the heart icon on any card.' : 'No matching video themes found.'}</p>
           </div>
         ) : (

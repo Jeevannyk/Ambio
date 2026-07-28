@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Play, Pause, RotateCcw, Zap, Coffee, X } from 'lucide-react';
+import { Play, Pause, ArrowCounterClockwise, Lightning, Coffee, X } from '@phosphor-icons/react';
 import { POMODORO_MODES, formatTime } from '../hooks/usePomodoro';
 
 function PomodoroWidget({ pomodoro }) {
@@ -13,7 +13,7 @@ function PomodoroWidget({ pomodoro }) {
 
   const total = POMODORO_MODES[mode].seconds;
   const pct = Math.max(0, Math.min(100, ((total - secondsLeft) / total) * 100));
-  const ModeIcon = mode === 'focus' ? Zap : Coffee;
+  const ModeIcon = mode === 'focus' ? Lightning : Coffee;
 
   const handlePlay = (e) => {
     e.stopPropagation();
@@ -93,7 +93,7 @@ function PomodoroWidget({ pomodoro }) {
                 : <Play  size={20} fill="currentColor" />}
             </button>
             <button className="pomo-expand-reset" onClick={reset} aria-label="Reset">
-              <RotateCcw size={16} />
+              <ArrowCounterClockwise size={16} />
             </button>
           </div>
 
@@ -112,7 +112,7 @@ function PomodoroWidget({ pomodoro }) {
           onClick={(e) => { e.stopPropagation(); reset(); }}
           aria-label="Reset"
         >
-          <RotateCcw size={13} />
+          <ArrowCounterClockwise size={13} />
         </button>
         <div className="pomo-widget-ring" style={{ '--pomo-pct': `${pct}%` }}>
           <button className="pomo-widget-btn" onClick={handlePlay} aria-label={running ? 'Pause' : 'Start'}>

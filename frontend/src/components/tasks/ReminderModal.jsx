@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
+import { CaretLeft, CaretRight, ArrowClockwise } from '@phosphor-icons/react';
 
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
@@ -81,8 +81,8 @@ function ReminderModal({ initial, onCancel, onSet }) {
               <div className="rm-cal-head">
                 <strong>{MONTHS[view.m]} {view.y}</strong>
                 <div className="rm-nav">
-                  <button onClick={() => shift(-1)} aria-label="Previous month"><ChevronLeft size={18} /></button>
-                  <button onClick={() => shift(1)} aria-label="Next month"><ChevronRight size={18} /></button>
+                  <button onClick={() => shift(-1)} aria-label="Previous month"><CaretLeft size={18} /></button>
+                  <button onClick={() => shift(1)} aria-label="Next month"><CaretRight size={18} /></button>
                 </div>
               </div>
               <div className="rm-grid rm-grid--wd">
@@ -105,7 +105,7 @@ function ReminderModal({ initial, onCancel, onSet }) {
               <button onClick={() => quick(1)}>Tomorrow</button>
               <button onClick={() => quick(7)}>Next week</button>
               <button onClick={() => { setSomeday(true); setSel(null); }}>Someday</button>
-              <button className="rm-quick-rec" type="button"><RotateCw size={14} /> Recurring</button>
+              <button className="rm-quick-rec" type="button"><ArrowClockwise size={14} /> Recurring</button>
             </div>
           </div>
         </div>

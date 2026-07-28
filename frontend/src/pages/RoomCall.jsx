@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Mic, MicOff, Video as Cam, VideoOff, MonitorUp, MonitorX, Hand,
-  Smile, MessageSquare, Users, PhoneOff, Send, Shield, VolumeX, UserX, Crown,
-  LayoutGrid, Monitor, Maximize, Minimize, Play, Pause,
-} from 'lucide-react';
+  Microphone, MicrophoneSlash, VideoCamera as Cam, VideoCameraSlash, Screencast, Hand,
+  Smiley, Chat, Users, PhoneSlash, PaperPlaneRight, Shield, SpeakerX, UserMinus, Crown,
+  SquaresFour, Monitor, CornersOut, CornersIn, Play, Pause,
+} from '@phosphor-icons/react';
 import { useRoomCall } from '../hooks/useRoomCall';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
 import { formatTime } from '../hooks/usePomodoro';
@@ -251,7 +251,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
             onClick={() => setViewMode('gallery')}
             title="Gallery view"
           >
-            <LayoutGrid size={14} /> Gallery
+            <SquaresFour size={14} /> Gallery
           </button>
           <button
             className={viewMode === 'speaker' ? 'active' : ''}
@@ -370,7 +370,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
                 onChange={(e) => setChatText(e.target.value)}
                 placeholder="Type a message…"
               />
-              <button type="submit" aria-label="Send"><Send size={16} /></button>
+              <button type="submit" aria-label="Send"><PaperPlaneRight size={16} /></button>
             </form>
           </aside>
         )}
@@ -384,7 +384,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
             <div className="rc-people">
               <div className="rc-person">
                 <span className="rc-person-name">{displayName} (You){call.isHost && ' 👑'}</span>
-                {!call.micOn && <MicOff size={14} />}
+                {!call.micOn && <MicrophoneSlash size={14} />}
               </div>
               {call.participants.map((p) => (
                 <div key={p.id} className="rc-person">
@@ -392,14 +392,14 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
                     {p.name || 'Connecting…'} {p.hand && '✋'}
                   </span>
                   <span className="rc-person-actions">
-                    {!p.micOn && <MicOff size={14} />}
+                    {!p.micOn && <MicrophoneSlash size={14} />}
                     {call.isAdmin && (
                       <>
                         <button onClick={() => call.muteParticipant(p.id)} title="Mute" aria-label="Mute participant">
-                          <VolumeX size={14} />
+                          <SpeakerX size={14} />
                         </button>
                         <button onClick={() => call.kickParticipant(p.id)} title="Remove" aria-label="Remove participant">
-                          <UserX size={14} />
+                          <UserMinus size={14} />
                         </button>
                       </>
                     )}
@@ -420,15 +420,15 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
         {...bindHover}
       >
         <button className={'rc-ctrl' + (call.micOn ? '' : ' rc-ctrl--off')} onClick={call.toggleMic}>
-          {call.micOn ? <Mic size={20} /> : <MicOff size={20} />}
+          {call.micOn ? <Microphone size={20} /> : <MicrophoneSlash size={20} />}
           <span>{call.micOn ? 'Mute' : 'Unmute'}</span>
         </button>
         <button className={'rc-ctrl' + (call.camOn ? '' : ' rc-ctrl--off')} onClick={call.toggleCam}>
-          {call.camOn ? <Cam size={20} /> : <VideoOff size={20} />}
+          {call.camOn ? <Cam size={20} /> : <VideoCameraSlash size={20} />}
           <span>{call.camOn ? 'Stop Video' : 'Start Video'}</span>
         </button>
         <button className={'rc-ctrl' + (call.sharing ? ' rc-ctrl--active' : '')} onClick={call.sharing ? call.stopScreenShare : call.startScreenShare}>
-          {call.sharing ? <MonitorX size={20} /> : <MonitorUp size={20} />}
+          {call.sharing ? <Screencast size={20} /> : <Screencast size={20} />}
           <span>{call.sharing ? 'Stop Share' : 'Share'}</span>
         </button>
         <button className={'rc-ctrl' + (call.handRaised ? ' rc-ctrl--active' : '')} onClick={call.raiseHand}>
@@ -437,7 +437,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
         </button>
         <div className="rc-ctrl-wrap">
           <button className="rc-ctrl" onClick={() => setShowEmoji((v) => !v)}>
-            <Smile size={20} />
+            <Smiley size={20} />
             <span>React</span>
           </button>
           {showEmoji && (
@@ -449,7 +449,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
           )}
         </div>
         <button className={'rc-ctrl' + (panel === 'chat' ? ' rc-ctrl--active' : '')} onClick={() => setPanel(panel === 'chat' ? null : 'chat')}>
-          <MessageSquare size={20} />
+          <Chat size={20} />
           <span>Chat</span>
         </button>
         <button className={'rc-ctrl' + (panel === 'people' ? ' rc-ctrl--active' : '')} onClick={() => setPanel(panel === 'people' ? null : 'people')}>
@@ -457,12 +457,12 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
           <span>People</span>
         </button>
         <button className="rc-ctrl" onClick={toggleFullscreen}>
-          {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+          {isFullscreen ? <CornersIn size={20} /> : <CornersOut size={20} />}
           <span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
         </button>
         <div className="rc-ctrl-wrap">
           <button className="rc-ctrl rc-ctrl--leave" onClick={() => setConfirmLeave((v) => !v)}>
-            <PhoneOff size={20} />
+            <PhoneSlash size={20} />
             <span>Leave</span>
           </button>
           {confirmLeave && (

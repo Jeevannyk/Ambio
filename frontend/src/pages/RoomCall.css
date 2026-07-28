@@ -1036,16 +1036,3 @@
   background: #1f2430;
   color: #fff;
 }
-
-/* Join-by-code row on Rooms page */
-.room-join-code {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.room-form-hint {
-  margin: 0.25rem 0 0.75rem;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.45);
-}

@@ -1,0 +1,45 @@
+:root {
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --surface-rgb: 255, 255, 255;
+  --text: #1f2937;
+  --muted: #9ca3af;
+  --text-muted: var(--muted);
+  --border: #e5e7eb;
+  --brand: #f5c518;
+  --brand-strong: #fbd24b;
+  --brand-soft: rgba(245, 197, 24, 0.14);
+  --brand-contrast: #1a1400;
+  --accent: #d4a017;
+  --accent-hover: #b8860b;
+  --danger: #ef4444;
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --z-base: 1;
+  --z-panel: 40;
+  --z-overlay: 80;
+  --z-modal: 500;
+  --z-toast: 800;
+  --z-cursor: 1000;
+}
+
+body[data-theme='dark'] {
+  --bg: #111827;
+  --surface: #1f2937;
+  --surface-rgb: 31, 41, 55;
+  --text: #f3f4f6;
+  --muted: #6b7280;
+  --text-muted: var(--muted);
+  --border: #374151;
+  --accent: #f5c518;
+  --accent-hover: #fbd24b;
+  --danger: #f87171;
+  --glass-bg: rgba(15, 20, 35, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+body {
+  background: #0a0f1a;
+  transition: background 0.2s;
+}
+

@@ -1,0 +1,72 @@
+/* ---- Calendar panel ---- */
+[data-slot="calendar"] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+  color: var(--text);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* Nav buttons (prev/next) */
+[data-slot="calendar"] button {
+  color: var(--text);
+  background: transparent;
+}
+
+[data-slot="calendar"] button:hover {
+  background: var(--border);
+  border-radius: 6px;
+}
+
+/* Day cells */
+[data-slot="calendar"] [data-day] button {
+  color: var(--text);
+  border-radius: 6px;
+}
+
+[data-slot="calendar"] [data-day] button:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Selected day */
+[data-slot="calendar"] [data-selected-single="true"] {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-radius: 6px;
+}
+
+/* Today highlight */
+[data-slot="calendar"] [data-today="true"] button {
+  border: 1px solid var(--accent);
+}
+
+/* Outside-month days */
+[data-slot="calendar"] [data-outside-month="true"] button {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+/* Weekday headers (Su Mo Tu ...) */
+[data-slot="calendar"] [class*="weekday"] {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* Month/year dropdowns */
+[data-slot="calendar"] select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+[data-slot="calendar"] select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+

@@ -1,0 +1,10 @@
+/* ---- Rooms page (see RoomsPage.css) ---- */
+
+/* ── Mobile ──────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .content-area {
+    margin-left: 84px;
+    padding: 1.25rem 1rem;
+  }
+}
+

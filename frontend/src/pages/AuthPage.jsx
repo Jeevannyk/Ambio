@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, X } from 'lucide-react';
+import { Eye, EyeClosed, X } from '@phosphor-icons/react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import './AuthPage.css';
 
@@ -165,7 +165,7 @@ function AuthPage() {
                     onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                   />
                   <button type="button" className="auth-pw-toggle" onClick={() => setShowPw((v) => !v)} aria-label="Toggle password">
-                    {showPw ? <EyeOff size={17} /> : <Eye size={17} />}
+                    {showPw ? <EyeClosed size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
               </label>

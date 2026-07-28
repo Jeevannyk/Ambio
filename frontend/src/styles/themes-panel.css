@@ -1,0 +1,296 @@
+/* ---- Themes flyout panel (LifeAt-style light panel) ---- */
+@keyframes panelSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Themes Drawer Panel Architecture ─────────────────────────────────── */
+.themes-panel {
+  position: fixed;
+  top: 1rem;
+  bottom: 1rem;
+  left: calc(0.75rem + 76px + 0.75rem);
+  z-index: 105;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 0;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  animation: panelSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tabs Switcher */
+.themes-tabs-header {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.85rem;
+}
+
+.themes-tabs {
+  display: flex;
+  gap: 1rem;
+}
+
+.themes-tab {
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.themes-tab:hover {
+  color: var(--text);
+}
+
+.themes-tab--active {
+  color: var(--text);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* Search Bar Input */
+.themes-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  margin-bottom: 0.85rem;
+  transition: border-color 0.15s;
+}
+
+.themes-search:focus-within {
+  border-color: var(--accent);
+}
+
+.search-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.themes-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.themes-search input::placeholder {
+  color: var(--muted);
+}
+
+.themes-section-meta {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+/* Scroll Area & Cards Grid */
+.themes-scroll {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem 0.75rem;
+}
+
+.themes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.empty-sparkle {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.themes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem 0.65rem;
+}
+
+/* Theme Thumbnail Cards */
+.theme-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.theme-card-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  padding: 0;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s ease;
+}
+
+.theme-card-thumb video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.theme-card-thumb:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.theme-card--active .theme-card-thumb {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Active Badge Overlay */
+.theme-active-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Heart Favorite Button */
+.theme-card-fav {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.theme-card-fav:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--danger);
+  transform: scale(1.05);
+}
+
+.theme-card-fav--on {
+  color: var(--danger);
+}
+
+.theme-card-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 0.1rem;
+}
+
+.theme-card-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-card-count {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* Current Theme Bottom Bar */
+.themes-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  margin: 0 -1.25rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(var(--surface-rgb), 0.5);
+  border-radius: 0 0 16px 16px;
+}
+
+.themes-current-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.themes-current-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.themes-current-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.theme-card-fav--inline {
+  position: static;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  color: var(--muted);
+}
+
+.theme-card-fav--inline:hover {
+  background: transparent;
+  color: var(--danger);
+}
+

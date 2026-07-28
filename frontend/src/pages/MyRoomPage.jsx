@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, CameraOff } from 'lucide-react';
+import { Play, Pause, ArrowCounterClockwise, VideoCameraSlash } from '@phosphor-icons/react';
 import { POMODORO_MODES, formatTime } from '../hooks/usePomodoro';
 import FlowDial from '../components/FlowDial';
 
@@ -20,7 +20,7 @@ function MyRoomPage({ pomodoro }) {
       <div className="my-room-header">
         <h2 className="rooms-title">My Room</h2>
         <p className="rooms-sub">
-          <CameraOff size={13} /> Your private space — no camera, no one else. Just you and your focus.
+          <VideoCameraSlash size={13} /> Your private space — no camera, no one else. Just you and your focus.
         </p>
       </div>
 
@@ -67,7 +67,7 @@ function MyRoomPage({ pomodoro }) {
           {running ? <><Pause size={16} /> Pause</> : <><Play size={16} /> Start</>}
         </button>
         <button className="my-room-btn" onClick={reset}>
-          <RotateCcw size={16} /> Reset
+          <ArrowCounterClockwise size={16} /> Reset
         </button>
       </div>
     </div>

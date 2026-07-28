@@ -116,7 +116,6 @@
 
 .vr-grid--1 { grid-template-columns: 1fr; }
 .vr-grid--2 { grid-template-columns: 1fr 1fr; }
-.vr-grid--3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 .vr-grid--4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
 
 /* ── Video tile ───────────────────────────────────────────────────────── */
@@ -160,12 +159,6 @@
   color: #fff;
   background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
   text-transform: uppercase;
-}
-
-.vr-tile-avatar--sm {
-  width: 60px;
-  height: 60px;
-  font-size: 24px;
 }
 
 .vr-tile-bottom {
@@ -293,15 +286,6 @@
   color: #93c5fd;
 }
 
-.vr-ctrl-btn--danger {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #f87171;
-}
-.vr-ctrl-btn--danger:hover {
-  background: rgba(239, 68, 68, 0.25);
-}
-
 .vr-ctrl-btn--off {
   background: rgba(239, 68, 68, 0.12);
   border-color: rgba(239, 68, 68, 0.25);
@@ -338,19 +322,6 @@
   height: 36px;
   background: rgba(255, 255, 255, 0.08);
   margin: 0 6px;
-}
-
-/* Slash line for muted / camera off */
-.vr-slash {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 28px;
-  height: 2px;
-  background: #ef4444;
-  border-radius: 1px;
-  transform: translate(-50%, -50%) rotate(-45deg);
-  pointer-events: none;
 }
 
 /* ── Emoji reaction picker ────────────────────────────────────────────── */

@@ -1274,6 +1274,32 @@
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
 }
 
+.streak-cele-stage {
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.streak-ember {
+  position: absolute;
+  bottom: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fb923c;
+  box-shadow: 0 0 6px rgba(251, 146, 60, 0.8);
+  opacity: 0;
+  animation-name: emberRise;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes emberRise {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(10px, -90px) scale(1); }
+}
+
 .streak-cele-flame {
   color: #fb923c;
   margin: 0 auto 0.5rem;
@@ -1625,6 +1651,13 @@
   border-top: 1px solid var(--layout-border);
   display: flex;
   gap: 0.5rem;
+}
+
+.rm-foot-div {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  align-self: center;
 }
 
 .rm-cancel, .rm-set {

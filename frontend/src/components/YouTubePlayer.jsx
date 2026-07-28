@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Volume2, Volume1, VolumeX, Play, Pause, ArrowLeft, ArrowRight, Heart } from 'lucide-react';
+import { SpeakerHigh, SpeakerLow, SpeakerX, Play, Pause, ArrowLeft, ArrowRight, Heart } from '@phosphor-icons/react';
 import { audioReactor } from '../audio/audioReactor';
 import AudioVisualizer from './audio/AudioVisualizer';
 import AudioReactiveGlow from './audio/AudioReactiveGlow';
@@ -187,7 +187,7 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
   };
 
   const silent = info.muted || volume === 0;
-  const VolIcon = silent ? VolumeX : volume < 50 ? Volume1 : Volume2;
+  const VolIcon = silent ? SpeakerX : volume < 50 ? SpeakerLow : SpeakerHigh;
 
   // playlist=<id> makes loop=1 work for VODs; enablejsapi powers the custom UI
   const embedUrl = `https://www.youtube.com/embed/${active.videoId}?autoplay=1&rel=0&loop=1&playlist=${active.videoId}&enablejsapi=1`;

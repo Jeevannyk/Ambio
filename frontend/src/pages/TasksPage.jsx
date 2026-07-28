@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import {
-  ListChecks, ArrowUpDown, Filter, MoreHorizontal, Trash2, Search,
-  Headset, CalendarDays, Bell, FileText, Hash, Plus,
-  Target, Archive, Check, ArrowUp, Lock, LayoutGrid, Layers, Printer,
-  ChevronRight, ChevronLeft, CircleCheck, Paperclip, Download, Flame,
+  ListChecks, ArrowsDownUp, Funnel, DotsThree, Trash, MagnifyingGlass,
+  Headset, CalendarDots as CalendarDays, Bell, FileText, Hash, Plus,
+  Target, Archive, Check, ArrowUp, Lock, SquaresFour, Stack, Printer,
+  CaretRight, CaretLeft, CheckCircle, Paperclip, Download, Flame,
   Moon, Sun,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import ReminderModal from '../components/tasks/ReminderModal';
 import MoveToModal from '../components/tasks/MoveToModal';
 import TagsModal from '../components/tasks/TagsModal';
@@ -705,7 +705,7 @@ function TasksPage({ theme, onThemeToggle }) {
               aria-expanded={viewOpen}
               aria-label="View options"
             >
-              <ArrowUpDown size={15} /> View
+              <ArrowsDownUp size={15} /> View
             </button>
             {viewOpen && (
               <div className="t2-menu-pop t2-menu-pop--view" role="menu" aria-label="View options">
@@ -728,7 +728,7 @@ function TasksPage({ theme, onThemeToggle }) {
               aria-expanded={filterOpen}
               aria-label="Filter tasks"
             >
-              <Filter size={15} /> Filter{activeFilterCount > 0 && <span className="t2-filter-badge">{activeFilterCount}</span>}
+              <Funnel size={15} /> Filter{activeFilterCount > 0 && <span className="t2-filter-badge">{activeFilterCount}</span>}
             </button>
             {filterOpen && (
               <div className="t2-menu-pop t2-filter-pop" role="menu" aria-label="Filter options">
@@ -736,15 +736,15 @@ function TasksPage({ theme, onThemeToggle }) {
                   <>
                     <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('lists')}>
                       <span className="t2-menu-item-left"><Lock size={15} className="t2-menu-item-icon" /> My lists</span>
-                      <span className="t2-menu-nav-right">{filterByLists.size > 0 && <span className="t2-filter-badge">{filterByLists.size}</span>}<ChevronRight size={14} /></span>
+                      <span className="t2-menu-nav-right">{filterByLists.size > 0 && <span className="t2-filter-badge">{filterByLists.size}</span>}<CaretRight size={14} /></span>
                     </button>
                     <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('tags')}>
                       <span className="t2-menu-item-left"><Hash size={15} className="t2-menu-item-icon" /> Tags</span>
-                      <span className="t2-menu-nav-right">{filterByTags.size > 0 && <span className="t2-filter-badge">{filterByTags.size}</span>}<ChevronRight size={14} /></span>
+                      <span className="t2-menu-nav-right">{filterByTags.size > 0 && <span className="t2-filter-badge">{filterByTags.size}</span>}<CaretRight size={14} /></span>
                     </button>
                     <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('status')}>
-                      <span className="t2-menu-item-left"><CircleCheck size={15} className="t2-menu-item-icon" /> Status</span>
-                      <span className="t2-menu-nav-right">{filterByStatus !== 'all' && <span className="t2-filter-badge">1</span>}<ChevronRight size={14} /></span>
+                      <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Status</span>
+                      <span className="t2-menu-nav-right">{filterByStatus !== 'all' && <span className="t2-filter-badge">1</span>}<CaretRight size={14} /></span>
                     </button>
                     {activeFilterCount > 0 && (
                       <button className="t2-filter-clear" onClick={() => { setFilterByLists(new Set()); setFilterByTags(new Set()); setFilterByStatus('all'); }}>
@@ -754,7 +754,7 @@ function TasksPage({ theme, onThemeToggle }) {
                   </>
                 ) : filterPanel === 'lists' ? (
                   <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><ChevronLeft size={14} /> My lists</button>
+                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> My lists</button>
                     {LISTS.map((list) => (
                       <button
                         key={list}
@@ -769,7 +769,7 @@ function TasksPage({ theme, onThemeToggle }) {
                   </>
                 ) : filterPanel === 'tags' ? (
                   <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><ChevronLeft size={14} /> Tags</button>
+                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Tags</button>
                     {allTags.length === 0 ? (
                       <p className="t2-filter-empty">No tags yet. Add tags to tasks first.</p>
                     ) : allTags.map((tag) => (
@@ -786,7 +786,7 @@ function TasksPage({ theme, onThemeToggle }) {
                   </>
                 ) : (
                   <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><ChevronLeft size={14} /> Status</button>
+                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Status</button>
                     {[['all', 'All tasks'], ['active', 'Active'], ['done', 'Completed']].map(([val, label]) => (
                       <button
                         key={val}
@@ -811,12 +811,12 @@ function TasksPage({ theme, onThemeToggle }) {
               aria-expanded={menuOpen}
               aria-label="More options"
             >
-              <MoreHorizontal size={16} />
+              <DotsThree size={16} />
             </button>
             {menuOpen && (
               <div className="t2-menu-pop" role="menu" aria-label="Task actions">
                 <button className="t2-menu-item" role="menuitem" onClick={cycleLayout}>
-                  <span className="t2-menu-item-left"><LayoutGrid size={15} className="t2-menu-item-icon" /> Layout</span>
+                  <span className="t2-menu-item-left"><SquaresFour size={15} className="t2-menu-item-icon" /> Layout</span>
                   <span className="t2-menu-meta">{layoutLabel}</span>
                 </button>
                 <button
@@ -829,7 +829,7 @@ function TasksPage({ theme, onThemeToggle }) {
                     setMenuOpen(false);
                   }}
                 >
-                  <span className="t2-menu-item-left"><Layers size={15} className="t2-menu-item-icon" /> Multi-select</span>
+                  <span className="t2-menu-item-left"><Stack size={15} className="t2-menu-item-icon" /> Multi-select</span>
                   <span className="t2-menu-meta">{multiSelect ? 'On' : 'Off'}</span>
                 </button>
                 <button className="t2-menu-item" role="menuitem" onClick={handlePrint}>
@@ -918,7 +918,7 @@ function TasksPage({ theme, onThemeToggle }) {
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
           <label className="t2-search" title="Search">
-            <Search size={16} />
+            <MagnifyingGlass size={16} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />
           </label>
         </div>
@@ -998,7 +998,7 @@ function TasksPage({ theme, onThemeToggle }) {
               <>
                 <div className="t2-detail-head">
                   <button className="t2-detail-back" onClick={() => setDetailOpen(false)} aria-label="Back to list">
-                    <ChevronLeft size={18} /> Tasks
+                    <CaretLeft size={18} /> Tasks
                   </button>
                   <span className="t2-crumb">
                     <Target size={13} /> My lists <span className="t2-crumb-sep">›</span> {selected.list}
@@ -1052,18 +1052,18 @@ function TasksPage({ theme, onThemeToggle }) {
                       aria-expanded={subMenuOpen}
                       aria-label="Subtask actions"
                     >
-                      <MoreHorizontal size={16} />
+                      <DotsThree size={16} />
                     </button>
                     {subMenuOpen && (
                       <div className="t2-menu-pop t2-submenu-pop" role="menu" aria-label="Subtask actions">
                         <button className="t2-menu-item" role="menuitem" onClick={markAllSubtasksDone}>
-                          <span className="t2-menu-item-left"><CircleCheck size={15} className="t2-menu-item-icon" /> Mark all done</span>
+                          <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Mark all done</span>
                         </button>
                         <button className="t2-menu-item" role="menuitem" onClick={clearCompletedSubtasks}>
                           <span className="t2-menu-item-left"><Check size={15} className="t2-menu-item-icon" /> Clear completed</span>
                         </button>
                         <button className="t2-menu-item t2-menu-item--danger" role="menuitem" onClick={deleteAllSubtasks}>
-                          <span className="t2-menu-item-left"><Trash2 size={15} className="t2-menu-item-icon" /> Delete all</span>
+                          <span className="t2-menu-item-left"><Trash size={15} className="t2-menu-item-icon" /> Delete all</span>
                         </button>
                       </div>
                     )}
@@ -1111,7 +1111,7 @@ function TasksPage({ theme, onThemeToggle }) {
                           <span className="t2-attach-size">{formatBytes(a.size)}</span>
                         </span>
                         <a className="t2-attach-act" href={a.dataUrl} download={a.name} title="Download"><Download size={15} /></a>
-                        <button className="t2-attach-act" onClick={() => removeAttachment(a.id)} title="Remove"><Trash2 size={15} /></button>
+                        <button className="t2-attach-act" onClick={() => removeAttachment(a.id)} title="Remove"><Trash size={15} /></button>
                       </div>
                     ))}
                   </div>
@@ -1247,7 +1247,7 @@ function TasksPage({ theme, onThemeToggle }) {
             <p className="t2-attach-error">Support is unavailable right now — please email us instead.</p>
           ) : supportSent ? (
             <div className="t2-support-sent">
-              <CircleCheck size={32} color="#22c55e" />
+              <CheckCircle size={32} color="#22c55e" />
               <p>Message sent! We'll get back to you soon.</p>
               <button className="t2-support-submit" onClick={() => { setSupportSent(false); setSupportForm({ name: '', email: '', message: '' }); }}>
                 Send another

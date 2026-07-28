@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, Focus, Users, Heart } from 'lucide-react';
+import { ArrowRight, Sparkle, Crosshair, Users, Heart } from '@phosphor-icons/react';
 import { ListChecks, VideoCamera, Timer } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
 import { useScrollReveal } from '../hooks/useScrollReveal';
@@ -186,14 +186,14 @@ function WelcomePage() {
       <section className="ambio-pillars reveal">
         <div className="pillar-tile">
           <div className="pillar-header">
-            <Focus size={20} className="pillar-icon" />
+            <Crosshair size={20} className="pillar-icon" />
             <h4>Calm by design</h4>
           </div>
           <p>Soft visuals, gentle motion, zero clutter — less friction to start.</p>
         </div>
         <div className="pillar-tile">
           <div className="pillar-header">
-            <Sparkles size={20} className="pillar-icon" />
+            <Sparkle size={20} className="pillar-icon" />
             <h4>All in one</h4>
           </div>
           <p>Tasks, timer, ambience, and music together — no juggling tabs.</p>

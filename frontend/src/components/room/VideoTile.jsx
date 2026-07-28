@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { MicOff, Hand, MonitorUp } from 'lucide-react';
+import { MicrophoneSlash, Hand, Screencast } from '@phosphor-icons/react';
 
 /*
  * One participant cell. Attaches the MediaStream to a <video>; shows an
@@ -47,11 +47,11 @@ function VideoTile({ stream, name, micOn, camOn, hand, speaking, isLocal, sharin
 
       <div className="vtile-bar">
         <span className="vtile-name">
-          {sharing && <MonitorUp size={12} />}
+          {sharing && <Screencast size={12} />}
           {name}
           {isLocal && ' (You)'}
         </span>
-        {!micOn && <MicOff size={14} className="vtile-muted" />}
+        {!micOn && <MicrophoneSlash size={14} className="vtile-muted" />}
       </div>
     </div>
   );

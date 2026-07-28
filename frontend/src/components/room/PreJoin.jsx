@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Video as Cam, VideoOff, ArrowLeft } from 'lucide-react';
+import { Microphone, MicrophoneSlash, VideoCamera as Cam, VideoCameraSlash, ArrowLeft } from '@phosphor-icons/react';
 
 const NAME_KEY = 'react-todo-app.displayName';
 
@@ -137,14 +137,14 @@ function PreJoin({ roomName, onJoin, onBack }) {
                 onClick={toggleMic}
                 aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
               >
-                {micOn ? <Mic size={18} /> : <MicOff size={18} />}
+                {micOn ? <Microphone size={18} /> : <MicrophoneSlash size={18} />}
               </button>
               <button
                 className={'prejoin-toggle' + (camOn ? '' : ' prejoin-toggle--off')}
                 onClick={toggleCam}
                 aria-label={camOn ? 'Turn camera off' : 'Turn camera on'}
               >
-                {camOn ? <Cam size={18} /> : <VideoOff size={18} />}
+                {camOn ? <Cam size={18} /> : <VideoCameraSlash size={18} />}
               </button>
             </div>
           )}
@@ -171,7 +171,7 @@ function PreJoin({ roomName, onJoin, onBack }) {
             )}
             {mics.length > 1 && (
               <label className="prejoin-device">
-                <Mic size={14} />
+                <Microphone size={14} />
                 <select value={audioDeviceId} onChange={(e) => changeMic(e.target.value)}>
                   {mics.map((m, i) => (
                     <option key={m.deviceId} value={m.deviceId}>{m.label || `Microphone ${i + 1}`}</option>

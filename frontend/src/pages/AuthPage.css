@@ -262,16 +262,6 @@
 }
 .auth-foot-link:hover { color: #fff; }
 
-.auth-foot-terms {
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.32);
-  cursor: pointer;
-  font-size: 0.78rem;
-  text-decoration: underline;
-  transition: color 0.15s;
-}
-
 /* ── Right: window into the focus room ─────────────────────────────── */
 .auth-right {
   position: relative;

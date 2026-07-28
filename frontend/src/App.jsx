@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { Moon, Sun, MousePointer2, MousePointerBan } from 'lucide-react';
+import { Moon, Sun, Cursor } from '@phosphor-icons/react';
 import Sidebar from './components/Sidebar';
 import CustomCursor from './components/CustomCursor';
 import BackgroundVideo from './components/BackgroundVideo';
@@ -10,7 +10,17 @@ import YouTubePlayer from './components/YouTubePlayer';
 import PomodoroWidget from './components/PomodoroWidget';
 import { usePomodoro } from './hooks/usePomodoro';
 import { AuthProvider, useAuth } from './lib/AuthContext';
-import './App.css';
+import './styles/cursor.css';
+import './styles/tokens.css';
+import './styles/shell.css';
+import './styles/todo-card.css';
+import './styles/themes-panel.css';
+import './styles/background.css';
+import './styles/overlays.css';
+import './styles/myroom.css';
+import './styles/pomodoro.css';
+import './styles/responsive.css';
+import './styles/light-theme.css';
 
 // Route pages are code-split: the heavy room/video stack (LiveKit) and the
 // large Tasks page only download when the user actually visits those routes,
@@ -125,7 +135,7 @@ function GlobalCursorToggle({ enabled, onToggle }) {
       onClick={onToggle}
       aria-label="Toggle custom cursor"
     >
-      {enabled ? <MousePointer2 size={18} /> : <MousePointerBan size={18} />}
+      {enabled ? <Cursor size={18} weight="fill" /> : <Cursor size={18} />}
     </button>
   );
 }

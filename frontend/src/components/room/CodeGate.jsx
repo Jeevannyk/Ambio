@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, KeyRound } from 'lucide-react';
+import { ArrowLeft, Key } from '@phosphor-icons/react';
 
 /*
  * Code gate: every room requires its code to be typed before entering.
@@ -26,7 +26,7 @@ function CodeGate({ roomName, expected, onVerified, onBack }) {
           <ArrowLeft size={16} /> Back to Rooms
         </button>
 
-        <div className="codegate-icon"><KeyRound size={26} /></div>
+        <div className="codegate-icon"><Key size={26} /></div>
         <h2 className="prejoin-title">Enter room code</h2>
         <p className="prejoin-sub">“{roomName}” is locked. Type its code to join.</p>
 

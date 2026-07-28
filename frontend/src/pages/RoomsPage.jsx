@@ -1,7 +1,7 @@
 // frontend/src/pages/RoomsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, Users, LogIn, Trash2, Copy, Check, Shield, ArrowRight, Radio } from 'lucide-react';
+import { Plus, X, Users, SignIn, Trash, Copy, Check, Shield, ArrowRight, Radio } from '@phosphor-icons/react';
 import { VideoCamera, Key } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
 import { useScrollReveal } from '../hooks/useScrollReveal';
@@ -226,7 +226,7 @@ function RoomsPage() {
                     onClick={() => deleteRoom(room.id)}
                     title="Terminate Room"
                   >
-                    <Trash2 size={13} />
+                    <Trash size={13} />
                   </button>
                 )}
               </div>
@@ -263,7 +263,7 @@ function RoomsPage() {
                 </button>
 
                 <button className="join-action-btn" onClick={() => enterRoom(room.id)}>
-                  <LogIn size={14} />
+                  <SignIn size={14} />
                   <span>Connect</span>
                 </button>
               </div>
