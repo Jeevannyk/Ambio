@@ -1,6 +1,7 @@
 /* ── Flow dial ─────────────────────────────────────────────────────────
    Glowing semicircular gauge, modelled on the "Noise off. Focus on."
-   reference. Used by My Room as its focus timer. */
+   reference. Used by My Room as its focus timer.
+   All colors follow the theme tokens (gold on dark, amber on light). */
 .flow-gauge {
   position: relative;
   width: min(720px, 92vw);
@@ -14,14 +15,17 @@
 }
 
 .flow-tick {
-  stroke: rgba(255, 255, 255, 0.16);
+  stroke: color-mix(in srgb, var(--text) 16%, transparent);
   stroke-width: 1;
 }
-.flow-tick--major { stroke: rgba(255, 255, 255, 0.32); stroke-width: 1.4; }
+.flow-tick--major {
+  stroke: color-mix(in srgb, var(--text) 34%, transparent);
+  stroke-width: 1.4;
+}
 
 .flow-arc-track {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.09);
+  stroke: color-mix(in srgb, var(--text) 10%, transparent);
   stroke-width: 30;
   stroke-linecap: round;
 }
@@ -31,14 +35,17 @@
   stroke: url(#flowFill);
   stroke-width: 30;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 10px rgba(255, 60, 30, 0.65)) drop-shadow(0 0 26px rgba(255, 60, 30, 0.4));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, transparent))
+          drop-shadow(0 0 26px color-mix(in srgb, var(--accent) 32%, transparent));
   transition: stroke-dasharray 0.6s linear;
 }
 .flow-arc-fill--live { animation: flow-pulse 2.4s ease-in-out infinite; }
 
 @keyframes flow-pulse {
-  0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 60, 30, 0.6)) drop-shadow(0 0 26px rgba(255, 60, 30, 0.35)); }
-  50%      { filter: drop-shadow(0 0 16px rgba(255, 60, 30, 0.85)) drop-shadow(0 0 40px rgba(255, 60, 30, 0.55)); }
+  0%, 100% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 50%, transparent))
+                     drop-shadow(0 0 26px color-mix(in srgb, var(--accent) 28%, transparent)); }
+  50%      { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--accent) 75%, transparent))
+                     drop-shadow(0 0 40px color-mix(in srgb, var(--accent) 45%, transparent)); }
 }
 
 .flow-readout {
@@ -54,7 +61,7 @@
 .flow-readout-label {
   font-size: 0.82rem;
   letter-spacing: 0.02em;
-  color: rgba(244, 244, 245, 0.55);
+  color: var(--muted);
   margin-bottom: 6px;
 }
 .flow-readout-time {
@@ -63,8 +70,8 @@
   line-height: 0.9;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: #f8f8f8;
-  text-shadow: 0 4px 40px rgba(255, 70, 40, 0.25);
+  color: var(--text);
+  text-shadow: 0 4px 32px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

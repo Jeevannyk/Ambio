@@ -26,9 +26,9 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-/* Cursor toggle sits directly below the theme toggle — small square,
-   never stretched (no bottom offset, height stays content-sized). */
+/* Cursor toggle sits alone at the top-right (the theme toggle was removed
+   when the app went dark-only). */
 .theme-toggle--cursor {
-  top: calc(1rem + 3rem);
+  top: 1rem;
 }
 

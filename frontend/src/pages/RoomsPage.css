@@ -759,3 +759,32 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Loading skeleton ──────────────────────────────────── */
+.room-card--skeleton {
+  gap: 0.9rem;
+  pointer-events: none;
+}
+
+.sk-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text) 8%, transparent) 25%,
+    color-mix(in srgb, var(--text) 16%, transparent) 50%,
+    color-mix(in srgb, var(--text) 8%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: skShimmer 1.4s ease-in-out infinite;
+}
+
+.sk-line--badge  { width: 38%; height: 32px; border-radius: 10px; }
+.sk-line--title  { width: 65%; height: 18px; }
+.sk-line--text   { width: 90%; }
+.sk-line--footer { width: 100%; height: 34px; border-radius: 8px; margin-top: auto; }
+
+@keyframes skShimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}

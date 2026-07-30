@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { Moon, Sun, Cursor } from '@phosphor-icons/react';
+import { Cursor } from '@phosphor-icons/react';
 import Sidebar from './components/Sidebar';
 import CustomCursor from './components/CustomCursor';
 import BackgroundVideo from './components/BackgroundVideo';
@@ -20,7 +20,6 @@ import './styles/overlays.css';
 import './styles/myroom.css';
 import './styles/pomodoro.css';
 import './styles/responsive.css';
-import './styles/light-theme.css';
 
 // Route pages are code-split: the heavy room/video stack (LiveKit) and the
 // large Tasks page only download when the user actually visits those routes,
@@ -31,8 +30,6 @@ const TasksPage = lazy(() => import('./pages/TasksPage'));
 const MyRoomPage = lazy(() => import('./pages/MyRoomPage'));
 const RoomsPage = lazy(() => import('./pages/RoomsPage'));
 const RoomCall = lazy(() => import('./pages/RoomCall'));
-
-const THEME_KEY = 'react-todo-app.theme';
 
 const SCENES = [
   {
@@ -97,25 +94,6 @@ function RouteLoader() {
   );
 }
 
-// Global dark-mode toggle — hidden inside a live room for an immersive,
-// distraction-free view (it's also covered by the room overlay there).
-function GlobalThemeToggle({ theme, onToggle }) {
-  const { pathname } = useLocation();
-  // Show everywhere except inside a live room (immersive) and the auth pages
-  // (they have their own fixed theme).
-  // On /tasks the toggle lives inside the toolbar (with the todo tools), so hide the floating one here too.
-  if (/^\/rooms\/.+/.test(pathname) || pathname === '/login' || pathname === '/signup' || pathname === '/tasks') return null;
-  return (
-    <button
-      className="theme-toggle theme-toggle--global"
-      onClick={onToggle}
-      aria-label="Toggle dark mode"
-    >
-      {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-    </button>
-  );
-}
-
 // Block protected pages until the user has signed in; bounce to /login.
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -124,8 +102,8 @@ function RequireAuth({ children }) {
   return children;
 }
 
-// Custom-cursor opt-out toggle — stacked above the global theme toggle and
-// hidden on the same routes (live rooms, auth pages, /tasks).
+// Custom-cursor opt-out toggle — top-right; hidden on live rooms, auth
+// pages, and /tasks.
 function GlobalCursorToggle({ enabled, onToggle }) {
   const { pathname } = useLocation();
   if (/^\/rooms\/.+/.test(pathname) || pathname === '/login' || pathname === '/signup' || pathname === '/tasks') return null;
@@ -141,7 +119,6 @@ function GlobalCursorToggle({ enabled, onToggle }) {
 }
 
 function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
   const [sceneIndex, setSceneIndex] = useState(0);
   const [customVideoId, setCustomVideoId] = useState(null);
   const [themesOpen, setThemesOpen] = useState(false);
@@ -150,32 +127,16 @@ function App() {
   const [cursorMotionOk] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const pomodoro = usePomodoro();
 
+  // The app is dark-only; the attribute stays so body[data-theme='dark']
+  // selectors keep matching (tokens default to the dark palette anyway).
   useEffect(() => {
-    localStorage.setItem(THEME_KEY, theme);
-    document.body.dataset.theme = theme;
-  }, [theme]);
+    document.body.dataset.theme = 'dark';
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ambio.cursor', cursorEnabled ? 'on' : 'off');
     document.body.dataset.cursor = cursorEnabled ? 'custom' : 'native';
   }, [cursorEnabled]);
-
-  const handleThemeToggle = (e) => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setTheme(newTheme);
-      return;
-    }
-    const x = e.clientX;
-    const y = e.clientY;
-    document.startViewTransition(() => setTheme(newTheme)).ready.then(() => {
-      const maxRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-      document.documentElement.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxRadius}px at ${x}px ${y}px)`] },
-        { duration: 500, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' }
-      );
-    });
-  };
 
   return (
     <AuthProvider>
@@ -200,7 +161,7 @@ function App() {
               <Route path="/login" element={<AuthPage />} />
               <Route path="/signup" element={<AuthPage />} />
               <Route path="/" element={<RequireAuth><WelcomePage /></RequireAuth>} />
-              <Route path="/tasks" element={<RequireAuth><TasksPage theme={theme} onThemeToggle={handleThemeToggle} /></RequireAuth>} />
+              <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
               <Route path="/my-room" element={<RequireAuth><MyRoomPage pomodoro={pomodoro} /></RequireAuth>} />
               <Route path="/rooms" element={<RequireAuth><RoomsPage /></RequireAuth>} />
               <Route path="/rooms/:id" element={<RequireAuth><RoomCall pomodoro={pomodoro} /></RequireAuth>} />
@@ -209,7 +170,6 @@ function App() {
         </main>
       </div>
 
-      <GlobalThemeToggle theme={theme} onToggle={handleThemeToggle} />
       <GlobalCursorToggle enabled={cursorEnabled} onToggle={() => setCursorEnabled((v) => !v)} />
 
       <SceneSelector

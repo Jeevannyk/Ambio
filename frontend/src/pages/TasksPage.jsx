@@ -4,7 +4,6 @@ import {
   Headset, CalendarDots as CalendarDays, Bell, FileText, Hash, Plus,
   Target, Archive, Check, ArrowUp, Lock, SquaresFour, Stack, Printer,
   CaretRight, CaretLeft, CheckCircle, Paperclip, Download, Flame,
-  Moon, Sun,
 } from '@phosphor-icons/react';
 import ReminderModal from '../components/tasks/ReminderModal';
 import MoveToModal from '../components/tasks/MoveToModal';
@@ -173,7 +172,7 @@ const bucketForTask = (task, now = today()) => {
   return 'upcoming';
 };
 
-function TasksPage({ theme, onThemeToggle }) {
+function TasksPage() {
   const [tasks, setTasks] = useState(loadTasks);
   const [selectedId, setSelectedId] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false); // mobile: detail slide-over open
@@ -909,14 +908,6 @@ function TasksPage({ theme, onThemeToggle }) {
               </div>
             )}
           </div>
-          <button
-            className="t2-tool"
-            title={theme === 'light' ? 'Dark mode' : 'Light mode'}
-            aria-label="Toggle dark mode"
-            onClick={onThemeToggle}
-          >
-            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-          </button>
           <label className="t2-search" title="Search">
             <MagnifyingGlass size={16} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" />

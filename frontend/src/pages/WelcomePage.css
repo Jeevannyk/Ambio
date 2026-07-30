@@ -390,9 +390,9 @@ body[data-theme='dark'] .ambio-mesh-grid {
   height: 52px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--border);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   flex-shrink: 0;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .avatar-wrapper::before {
@@ -404,7 +404,7 @@ body[data-theme='dark'] .ambio-mesh-grid {
   justify-content: center;
   font-family: 'Young Serif', serif;
   font-size: 1.2rem;
-  color: var(--muted);
+  color: var(--accent);
 }
 
 .avatar-wrapper img {

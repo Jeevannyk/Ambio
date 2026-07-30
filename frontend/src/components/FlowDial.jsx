@@ -33,9 +33,8 @@ function FlowDial({ progress = 0, running = false, label, time }) {
       <svg className="flow-dial" viewBox="0 0 400 215" preserveAspectRatio="xMidYMax meet">
         <defs>
           <linearGradient id="flowFill" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#ff5a1f" />
-            <stop offset="55%" stopColor="#ff2d2d" />
-            <stop offset="100%" stopColor="#ff7a3c" />
+            <stop offset="0%" style={{ stopColor: 'var(--accent)' }} />
+            <stop offset="100%" style={{ stopColor: 'var(--accent-hover)' }} />
           </linearGradient>
         </defs>
 
@@ -51,12 +50,14 @@ function FlowDial({ progress = 0, running = false, label, time }) {
         ))}
 
         <path className="flow-arc-track" d={ARC} pathLength="1" />
-        <path
-          className={'flow-arc-fill' + (running ? ' flow-arc-fill--live' : '')}
-          d={ARC}
-          pathLength="1"
-          style={{ strokeDasharray: `${dash} 1` }}
-        />
+        {dash > 0.002 && (
+          <path
+            className={'flow-arc-fill' + (running ? ' flow-arc-fill--live' : '')}
+            d={ARC}
+            pathLength="1"
+            style={{ strokeDasharray: `${dash} 1` }}
+          />
+        )}
       </svg>
 
       <div className="flow-readout">

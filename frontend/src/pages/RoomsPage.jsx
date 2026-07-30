@@ -4,10 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, X, Users, SignIn, Trash, Copy, Check, Shield, ArrowRight, Radio } from '@phosphor-icons/react';
 import { VideoCamera, Key } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
+import { supabase } from '../lib/supabase';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import './RoomsPage.css';
-
-const ROOMS_KEY = 'react-todo-app.rooms';
 
 function genCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -16,39 +15,45 @@ function genCode() {
   return out;
 }
 
-function loadRooms() {
-  try {
-    const saved = localStorage.getItem(ROOMS_KEY);
-    return saved ? JSON.parse(saved) : [
-      { id: 'DEEP42', name: 'Deep Work', description: 'Silent focus — no distractions.', max: 5, joined: false },
-      { id: 'STUDY7', name: 'Study Hall', description: 'Group studying session.', max: 5, joined: false },
-    ];
-  } catch { return []; }
-}
-
 function RoomsPage() {
   const navigate = useNavigate();
   const { isAdmin: admin } = useAuth();
-  const [rooms, setRooms] = useState(loadRooms);
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', max: 5 });
   const [error, setError] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [copiedId, setCopiedId] = useState('');
 
+  // Rooms live in Supabase so they're shared across users and devices.
+  // RLS on the table: everyone signed in can read; only the admin writes.
   useEffect(() => {
-    localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
-  }, [rooms]);
+    if (!supabase) { setFetchError('Supabase is not configured.'); setLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error: err } = await supabase
+        .from('rooms')
+        .select('id, name, description, max')
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (err) setFetchError('Could not load rooms. Check your connection and try again.');
+      else setRooms(data || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  const createRoom = (e) => {
+  const createRoom = async (e) => {
     e.preventDefault();
     if (!admin) return;
     if (!form.name.trim()) { setError('Room name is required.'); return; }
     const max = Math.min(6, Math.max(2, Number(form.max) || 5));
-    setRooms((prev) => [
-      ...prev,
-      { id: genCode(), name: form.name.trim(), description: form.description.trim(), max, joined: false },
-    ]);
+    const room = { id: genCode(), name: form.name.trim(), description: form.description.trim(), max };
+    const { error: err } = await supabase.from('rooms').insert(room);
+    if (err) { setError('Could not create the room. Please try again.'); return; }
+    setRooms((prev) => [...prev, room]);
     setForm({ name: '', description: '', max: 5 });
     setShowForm(false);
     setError('');
@@ -69,8 +74,10 @@ function RoomsPage() {
     });
   };
 
-  const deleteRoom = (id) => {
+  const deleteRoom = async (id) => {
     if (!admin) return;
+    const { error: err } = await supabase.from('rooms').delete().eq('id', id);
+    if (err) return; // keep the card if the delete failed
     setRooms((prev) => prev.filter((r) => r.id !== id));
   };
 
@@ -196,7 +203,24 @@ function RoomsPage() {
       )}
 
       {/* ── Rooms Grid ─────────────────────────────────────────── */}
-      {rooms.length === 0 ? (
+      {loading ? (
+        <div className="rooms-grid">
+          {[0, 1].map((i) => (
+            <div key={i} className="room-card room-card--skeleton" style={{ '--i': i }}>
+              <div className="sk-line sk-line--badge" />
+              <div className="sk-line sk-line--title" />
+              <div className="sk-line sk-line--text" />
+              <div className="sk-line sk-line--footer" />
+            </div>
+          ))}
+        </div>
+      ) : fetchError ? (
+        <div className="rooms-empty-state">
+          <VideoCamera size={44} weight="duotone" className="empty-icon" />
+          <h3>Rooms unavailable</h3>
+          <p>{fetchError}</p>
+        </div>
+      ) : rooms.length === 0 ? (
         <div className="rooms-empty-state">
           <VideoCamera size={44} weight="duotone" className="empty-icon" />
           <h3>No active channels running</h3>

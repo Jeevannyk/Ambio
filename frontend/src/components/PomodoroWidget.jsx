@@ -24,19 +24,13 @@ function PomodoroWidget({ pomodoro }) {
   return (
     <div className="pomo-widget-wrap">
 
-      {/* ── Futuristic HUD panel ─────────────────────────────── */}
+      {/* ── Expanded panel ───────────────────────────────────── */}
       {expanded && (
         <div className="pomo-expand" onClick={(e) => e.stopPropagation()}>
 
-          {/* corner brackets */}
-          <span className="pomo-cx pomo-cx--tl" />
-          <span className="pomo-cx pomo-cx--tr" />
-          <span className="pomo-cx pomo-cx--bl" />
-          <span className="pomo-cx pomo-cx--br" />
-
           {/* header row */}
           <div className="pomo-expand-head">
-            <span className="pomo-expand-label">◈ POMODORO</span>
+            <span className="pomo-expand-label">Pomodoro</span>
             <button className="pomo-expand-close" onClick={() => setExpanded(false)} aria-label="Close">
               <X size={13} />
             </button>

@@ -210,15 +210,7 @@ function WelcomePage() {
       {/* ── Engineering Signature Module ── */}
       <footer className="ambio-signature-deck reveal">
         <div className="signature-card">
-          <div className="avatar-wrapper" data-fallback="J">
-            <img
-              src="/photo.jpg"
-              alt="Portrait of Jeevan"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-          </div>
+          <div className="avatar-wrapper" data-fallback="J" />
           <div className="signature-details">
             <div className="signature-headline">
               <h4>Built by Jeevan</h4>
