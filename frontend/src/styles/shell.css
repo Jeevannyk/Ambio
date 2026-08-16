@@ -38,6 +38,13 @@
   padding: 3rem 2rem;
 }
 
+/* Auth routes opt out of the entry animation: its transform makes
+   .content-area a containing block for position:fixed descendants for the
+   full 600ms, which shifts the auth card sideways on a cold load. */
+.content-area--plain {
+  animation: none;
+}
+
 /* ---- Floating rail: one continuous dark glass panel over the wallpaper.
    Matches the task sections' glassmorphism so the sidebar reads as part of the
    same surface — no white cards, no hard edges. ---- */

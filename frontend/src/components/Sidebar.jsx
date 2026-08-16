@@ -10,6 +10,7 @@ import {
   SignOut,
 } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
+import { isAuthRoute } from '../lib/auth';
 
 const NAV = [
   { to: '/',        label: 'Home',    icon: House },
@@ -24,7 +25,7 @@ function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
   const { user, signOut } = useAuth();
 
   // Auth pages are a standalone experience — no app chrome.
-  if (pathname === '/login' || pathname === '/signup') return null;
+  if (isAuthRoute(pathname)) return null;
 
   const handleSignOut = async () => {
     await signOut();

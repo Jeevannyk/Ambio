@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Play, Pause, ArrowCounterClockwise, Lightning, Coffee, X } from '@phosphor-icons/react';
 import { POMODORO_MODES, formatTime } from '../hooks/usePomodoro';
+import { isAuthRoute } from '../lib/auth';
 
 function PomodoroWidget({ pomodoro }) {
   const location = useLocation();
   const path = location.pathname;
-  if (path === '/my-room' || path === '/tasks' || path === '/login' || path === '/signup' || /^\/rooms\/.+/.test(path)) return null;
+  if (path === '/my-room' || path === '/tasks' || isAuthRoute(path) || /^\/rooms\/.+/.test(path)) return null;
 
   const { mode, secondsLeft, running, round, setMode, toggle, reset } = pomodoro;
   const [expanded, setExpanded] = useState(false);

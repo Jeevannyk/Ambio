@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeClosed, X } from '@phosphor-icons/react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -16,17 +16,41 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
+function DiscordIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
-      <path d="M318.7 268c-.2-37 16.8-65 50.3-85.4-18.7-26.8-47-41.6-84.3-44.4-35.4-2.8-74 20.7-88.2 20.7-15 0-49.2-19.7-75.9-19.7C71.7 139.7 0 184.6 0 276c0 27 4.9 54.9 14.8 83.7 13.2 37.9 60.9 131 110.7 129.5 25.9-.6 44.2-18.4 78-18.4 32.8 0 49.7 18.4 78.5 18.4 50.2-.7 93.4-85.3 106-123.4-67-31.6-69.3-92.6-69.3-97.8zM256.4 84.5c25.6-30.4 23.3-58 22.5-67.9-22.6 1.3-48.8 15.4-63.7 32.7-16.5 18.6-26.2 41.6-24.1 66.5 24.5 1.9 46.8-10.7 65.3-31.3z" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20.317 4.3698a19.7913 19.7913 0 0 0-4.8851-1.5152.0741.0741 0 0 0-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 0 0-.0785-.037 19.7363 19.7363 0 0 0-4.8852 1.515.0699.0699 0 0 0-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 0 0 .0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 0 0 .0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 0 0-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 0 1-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 0 1 .0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 0 1 .0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 0 1-.0066.1276 12.2986 12.2986 0 0 1-1.873.8914.0766.0766 0 0 0-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 0 0 .0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 0 0 .0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 0 0-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z" />
     </svg>
   );
 }
 
+// Keep in sync with the .auth-card--exit animation duration in AuthPage.css.
+const EXIT_MS = 500;
+
+// Supabase error codes → copy a human can act on. Anything unmapped falls back
+// to the raw message.
+const ERROR_COPY = {
+  invalid_credentials: 'Email or password is incorrect.',
+  user_already_exists: 'That email already has an account.',
+  email_not_confirmed: 'Confirm your email first — the link is in your inbox.',
+  over_email_send_rate_limit: 'Too many emails sent. Wait a minute and try again.',
+  weak_password: 'That password is too weak — use at least 6 characters.',
+};
+
+// auth-js wraps a failed browser fetch as AuthRetryableFetchError with status 0,
+// so an offline user would otherwise read the raw "Failed to fetch".
+function errorCopy(e) {
+  if (ERROR_COPY[e?.code]) return ERROR_COPY[e.code];
+  if (e?.name === 'AuthRetryableFetchError' && e.status === 0) {
+    return "Can't reach Ambio. Check your connection and try again.";
+  }
+  return e?.message || 'Something went wrong.';
+}
+
 function AuthPage() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const [mode, setMode] = useState(() => (pathname === '/login' ? 'signin' : 'signup')); // 'signup' | 'signin'
   const [anim, setAnim] = useState(''); // '' | 'out' | 'in' | 'exit'
   const [showPw, setShowPw] = useState(false);
@@ -35,12 +59,44 @@ function AuthPage() {
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // rainy-night.mp4 is 5 MB. .auth-right is display:none ≤800px but a rendered
+  // <video> downloads anyway, so gate it here instead of leaving it to CSS.
+  const [showRoomVideo] = useState(() => window.matchMedia('(min-width: 801px)').matches);
+
   const isSignup = mode === 'signup';
 
   // Keep the mode in sync if the route changes while mounted (/login ↔ /signup).
   useEffect(() => {
     setMode(pathname === '/login' ? 'signin' : 'signup');
   }, [pathname]);
+
+  const close = useCallback(() => navigate('/'), [navigate]);
+
+  // The card reads as a dismissible modal, so Escape does what the X does.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [close]);
+
+  // Where to land after a successful sign-in: back to whatever the user was
+  // trying to reach (RequireAuth stashes it), else home.
+  const navigatedRef = useRef(false);
+  const goAfterAuth = useCallback(() => {
+    if (navigatedRef.current) return; // timer and animationend both race here
+    navigatedRef.current = true;
+    navigate(location.state?.from?.pathname ?? '/', { replace: true });
+  }, [navigate, location.state]);
+
+  // Navigation is driven by a timer, not by `animationend` alone: with
+  // animations disabled (extension, user stylesheet) that event never fires and
+  // the user would sit authenticated but stuck on /login. onCardAnimEnd is only
+  // an early-completion path — whichever lands first wins.
+  useEffect(() => {
+    if (anim !== 'exit') return undefined;
+    const t = setTimeout(goAfterAuth, EXIT_MS);
+    return () => clearTimeout(t);
+  }, [anim, goAfterAuth]);
 
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -55,15 +111,27 @@ function AuthPage() {
     setAnim('out');
   };
 
-  const onCardAnimEnd = () => {
+  const onCardAnimEnd = (e) => {
+    if (e.target !== e.currentTarget) return; // animation events bubble
     if (anim === 'out') {
-      setMode((m) => (m === 'signup' ? 'signin' : 'signup'));
+      // Flip the URL, not local state — the pathname effect drives `mode`, so a
+      // refresh mid-signup doesn't drop the user back into sign-in. `state` is
+      // carried so a deep-link destination survives the toggle.
+      navigate(isSignup ? '/login' : '/signup', { state: location.state });
       setAnim('in');
     } else if (anim === 'in') {
       setAnim('');
     } else if (anim === 'exit') {
-      navigate('/'); // navigate only after the fade-away fully finishes
+      goAfterAuth(); // the fade-away finished ahead of the timer
     }
+  };
+
+  // Editing any field clears whatever message is on screen — a stale "check
+  // your email" box otherwise sits there while the user retypes.
+  const setField = (key) => (e) => {
+    const { value } = e.target;
+    setForm((f) => ({ ...f, [key]: value }));
+    setErr(''); setInfo('');
   };
 
   const submit = async (e) => {
@@ -79,7 +147,11 @@ function AuthPage() {
           options: { data: { full_name: form.name } },
         });
         if (error) throw error;
-        // If email confirmation is ON, there's no session yet.
+        // If email confirmation is ON, there's no session yet. Supabase also
+        // returns this exact shape (obfuscated user, `identities: []`) for an
+        // already-registered email — deliberately, so the response can't be
+        // used to enumerate accounts. The copy therefore stays identical either
+        // way; the "sign in instead" link rides along unconditionally.
         if (!data.session) {
           setInfo('Check your email to confirm your account, then sign in.');
           setBusy(false);
@@ -95,29 +167,28 @@ function AuthPage() {
       setBusy(false);
       setAnim('exit'); // session set → play fade-away, then navigate home
     } catch (e2) {
-      setErr(e2.message || 'Something went wrong.');
+      setErr(errorCopy(e2));
       setBusy(false);
     }
   };
 
   const oauth = async (provider) => {
-    setErr('');
+    setErr(''); setInfo('');
     if (!isSupabaseConfigured) { setErr('Auth not configured yet (missing Supabase keys).'); return; }
+    // signInWithOAuth does a round-trip before it redirects; without a busy flag
+    // a slow connection looks like a dead button and gets clicked again.
+    setBusy(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: window.location.origin },
     });
-    if (error) setErr(error.message);
+    if (error) { setErr(errorCopy(error)); setBusy(false); } // otherwise the redirect takes over
   };
 
   return (
     <div className="auth-screen">
-      <video className="auth-bg-video" autoPlay loop muted playsInline>
-        <source src="/videos/rainy-night.mp4" type="video/mp4" />
-      </video>
-      <div className="auth-bg-tint" />
       <div
-        className={'auth-card' + (anim === 'out' ? ' auth-card--out' : '') + (anim === 'in' ? ' auth-card--in' : '') + (anim === 'exit' ? ' auth-card--exit' : '')}
+        className={`auth-card ${anim ? `auth-card--${anim}` : ''}`}
         onAnimationEnd={onCardAnimEnd}
       >
         {/* Left — form */}
@@ -134,10 +205,13 @@ function AuthPage() {
                   <span>Full name</span>
                   <input
                     type="text"
+                    name="name"
+                    autoComplete="name"
                     placeholder="Your name"
                     value={form.name}
                     required
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    autoFocus
+                    onChange={setField('name')}
                   />
                 </label>
               )}
@@ -146,41 +220,66 @@ function AuthPage() {
                 <span>Email</span>
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   value={form.email}
                   required
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  autoFocus={!isSignup}
+                  onChange={setField('email')}
                 />
               </label>
 
               <label className="auth-field">
-                <span>Password</span>
+                <span>
+                  Password
+                  {isSignup && <span className="auth-hint">6+ characters</span>}
+                </span>
                 <div className="auth-pw">
                   <input
                     type={showPw ? 'text' : 'password'}
+                    name="password"
+                    autoComplete={isSignup ? 'new-password' : 'current-password'}
                     placeholder="••••••••••••"
                     value={form.password}
                     required
-                    minLength={6}
-                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    /* Only a signup constraint — enforcing it on sign-in blocks
+                       legacy passwords behind a useless browser tooltip. */
+                    minLength={isSignup ? 6 : undefined}
+                    onChange={setField('password')}
                   />
-                  <button type="button" className="auth-pw-toggle" onClick={() => setShowPw((v) => !v)} aria-label="Toggle password">
+                  <button
+                    type="button"
+                    className="auth-pw-toggle"
+                    onClick={() => setShowPw((v) => !v)}
+                    aria-label={showPw ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPw}
+                  >
                     {showPw ? <EyeClosed size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
               </label>
 
-              {err && <p className="auth-msg auth-msg--err">{err}</p>}
-              {info && <p className="auth-msg auth-msg--ok">{info}</p>}
+              {err && <p className="auth-msg auth-msg--err" role="alert">{err}</p>}
+              {info && (
+                <p className="auth-msg auth-msg--ok" role="status">
+                  {info}{' '}
+                  <button type="button" className="auth-msg-link" onClick={switchMode}>
+                    Already registered? Sign in
+                  </button>
+                </p>
+              )}
 
               <button type="submit" className="auth-submit" disabled={busy}>
                 {busy ? 'Please wait…' : isSignup ? 'Create account' : 'Sign in'}
               </button>
             </form>
 
+            <div className="auth-divider">or continue with</div>
+
             <div className="auth-social">
-              <button type="button" className="auth-social-btn" onClick={() => oauth('apple')}><AppleIcon /> Apple</button>
-              <button type="button" className="auth-social-btn" onClick={() => oauth('google')}><GoogleIcon /> Google</button>
+              <button type="button" className="auth-social-btn" onClick={() => oauth('google')} disabled={busy}><GoogleIcon /> Google</button>
+              <button type="button" className="auth-social-btn" onClick={() => oauth('discord')} disabled={busy}><DiscordIcon /> Discord</button>
             </div>
           </div>
 
@@ -196,11 +295,11 @@ function AuthPage() {
 
         {/* Right — window into the focus room */}
         <div className="auth-right">
-          <button className="auth-close" onClick={() => navigate('/')} aria-label="Close"><X size={18} /></button>
-
-          <video className="auth-window-video" autoPlay loop muted playsInline>
-            <source src="/videos/rainy-night.mp4" type="video/mp4" />
-          </video>
+          {showRoomVideo && (
+            <video className="auth-window-video" autoPlay loop muted playsInline preload="none">
+              <source src="/videos/rainy-night.mp4" type="video/mp4" />
+            </video>
+          )}
           <div className="auth-window-glow" aria-hidden="true" />
 
           <div className="auth-window-clock">{clock}</div>
@@ -210,6 +309,12 @@ function AuthPage() {
             <span>Rainy night · your room is ready</span>
           </div>
         </div>
+
+        {/* Last in the DOM so the first Tab lands on a field, not "Close"; it's
+            absolutely positioned against .auth-card, so order doesn't move it.
+            Kept off .auth-right — that column is hidden ≤800px and would take
+            the only way out of /login with it. */}
+        <button className="auth-close" onClick={close} disabled={busy} aria-label="Close"><X size={18} /></button>
       </div>
     </div>
   );

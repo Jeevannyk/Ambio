@@ -10,6 +10,7 @@ import YouTubePlayer from './components/YouTubePlayer';
 import PomodoroWidget from './components/PomodoroWidget';
 import { usePomodoro } from './hooks/usePomodoro';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { isAuthRoute } from './lib/auth';
 import './styles/cursor.css';
 import './styles/tokens.css';
 import './styles/shell.css';
@@ -97,8 +98,11 @@ function RouteLoader() {
 // Block protected pages until the user has signed in; bounce to /login.
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <RouteLoader />; // wait for the session check before deciding
-  if (!user) return <Navigate to="/login" replace />;
+  // Carry the intended destination so AuthPage can return there after sign-in
+  // (e.g. an invitee opening a shared room link).
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   return children;
 }
 
@@ -106,7 +110,7 @@ function RequireAuth({ children }) {
 // pages, and /tasks.
 function GlobalCursorToggle({ enabled, onToggle }) {
   const { pathname } = useLocation();
-  if (/^\/rooms\/.+/.test(pathname) || pathname === '/login' || pathname === '/signup' || pathname === '/tasks') return null;
+  if (/^\/rooms\/.+/.test(pathname) || isAuthRoute(pathname) || pathname === '/tasks') return null;
   return (
     <button
       className="theme-toggle theme-toggle--global theme-toggle--cursor"
@@ -115,6 +119,48 @@ function GlobalCursorToggle({ enabled, onToggle }) {
     >
       {enabled ? <Cursor size={18} weight="fill" /> : <Cursor size={18} />}
     </button>
+  );
+}
+
+// The scene wallpaper is a full-viewport layer behind every route. Auth pages
+// are an opaque full-screen takeover, so skip rendering (and decoding) it there.
+function AppBackground({ customVideoId, scene }) {
+  const { pathname } = useLocation();
+  if (isAuthRoute(pathname)) return null;
+  return customVideoId ? <YouTubeWallpaper videoId={customVideoId} /> : <BackgroundVideo scene={scene} />;
+}
+
+// The route shell. Auth pages drop the entry animation — see .content-area--plain.
+function ContentArea({ children }) {
+  const { pathname } = useLocation();
+  return (
+    <main className={'content-area' + (isAuthRoute(pathname) ? ' content-area--plain' : '')}>
+      {children}
+    </main>
+  );
+}
+
+// Themes + music panels. Both stay mounted on auth routes — YouTubePlayer's
+// hidden iframe must survive so playback continues — they just render closed,
+// and reopen in their prior state afterwards.
+function FloatingPanels({ scenes, activeIndex, themesOpen, onCloseThemes, onSelectScene, playerOpen, onTogglePlayer, onCustomVideo }) {
+  const { pathname } = useLocation();
+  const isAuth = isAuthRoute(pathname);
+  return (
+    <>
+      <SceneSelector
+        scenes={scenes}
+        activeIndex={activeIndex}
+        open={themesOpen && !isAuth}
+        onClose={onCloseThemes}
+        onSelect={onSelectScene}
+      />
+      <YouTubePlayer
+        onCustomVideo={onCustomVideo}
+        open={playerOpen && !isAuth}
+        onToggleOpen={onTogglePlayer}
+      />
+    </>
   );
 }
 
@@ -141,11 +187,7 @@ function App() {
   return (
     <AuthProvider>
     <BrowserRouter>
-      {customVideoId ? (
-        <YouTubeWallpaper videoId={customVideoId} />
-      ) : (
-        <BackgroundVideo scene={SCENES[sceneIndex]} />
-      )}
+      <AppBackground customVideoId={customVideoId} scene={SCENES[sceneIndex]} />
 
       <div className="app-shell">
         <Sidebar
@@ -155,7 +197,7 @@ function App() {
           onToggleMusic={() => setPlayerOpen((v) => !v)}
         />
 
-        <main className="content-area">
+        <ContentArea>
           <Suspense fallback={<RouteLoader />}>
             <Routes>
               <Route path="/login" element={<AuthPage />} />
@@ -167,25 +209,23 @@ function App() {
               <Route path="/rooms/:id" element={<RequireAuth><RoomCall pomodoro={pomodoro} /></RequireAuth>} />
             </Routes>
           </Suspense>
-        </main>
+        </ContentArea>
       </div>
 
       <GlobalCursorToggle enabled={cursorEnabled} onToggle={() => setCursorEnabled((v) => !v)} />
 
-      <SceneSelector
+      <FloatingPanels
         scenes={SCENES}
         activeIndex={sceneIndex}
-        open={themesOpen}
-        onClose={() => setThemesOpen(false)}
-        onSelect={(i) => {
+        themesOpen={themesOpen}
+        onCloseThemes={() => setThemesOpen(false)}
+        onSelectScene={(i) => {
           setSceneIndex(i);
           setCustomVideoId(null); // scene click returns to normal wallpapers
         }}
-      />
-      <YouTubePlayer
+        playerOpen={playerOpen}
+        onTogglePlayer={() => setPlayerOpen((v) => !v)}
         onCustomVideo={setCustomVideoId}
-        open={playerOpen}
-        onToggleOpen={() => setPlayerOpen((v) => !v)}
       />
       <PomodoroWidget pomodoro={pomodoro} />
       {cursorEnabled && cursorMotionOk && <CustomCursor />}
