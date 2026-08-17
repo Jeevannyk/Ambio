@@ -1036,3 +1036,67 @@
   background: #1f2430;
   color: #fff;
 }
+
+/* ── Narrow viewports ─────────────────────────────────────────────────
+   The 300px side panel would leave almost no stage on a phone, so it becomes
+   a full-screen overlay instead (its own × in .rc-panel-head still closes it)
+   and the floating bars drop the 300px inset they used to make room for it. */
+@media (max-width: 768px) {
+  .rc-header.rc-bar--panel,
+  .rc-controls.rc-bar--panel {
+    right: 0;
+  }
+
+  .rc-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    width: auto;
+    border-left: none;
+    background: rgba(11, 13, 18, 0.94);
+  }
+
+  /* Closing is now the only way out of the overlay — give it a real target. */
+  .rc-panel-head button {
+    font-size: 1.7rem;
+    padding: 0 0.4rem;
+  }
+
+  /* Nine controls on a phone: shrink them so the bar wraps into a couple of
+     rows instead of collapsing into a one-per-line stack. */
+  .rc-controls {
+    gap: 0.15rem;
+    padding: 0.5rem 0.35rem;
+  }
+
+  .rc-ctrl {
+    min-width: 0;
+    padding: 0.4rem 0.3rem;
+    font-size: 0.58rem;
+  }
+
+  .rc-ctrl span {
+    white-space: nowrap;
+  }
+
+  .rc-header {
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+  }
+
+  /* The room code also lives on the Rooms list — drop it before the title. */
+  .rc-invite {
+    display: none;
+  }
+}
+
+/* The nav rail is a bottom bar at this width (see styles/responsive.css):
+   clear its height instead of its old left edge. */
+@media (max-width: 600px) {
+  .prejoin,
+  .rc,
+  .rc-error {
+    left: 0;
+    bottom: var(--rail-h, 0px);
+  }
+}

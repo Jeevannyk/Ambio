@@ -335,6 +335,7 @@
 }
 
 .t2-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -423,12 +424,18 @@
   }
 }
 
-.t2-row-text { display: flex; flex-direction: column; min-width: 0; }
+/* The row is a plain container so its checkbox isn't an interactive element
+   nested inside another one. The title is the row's button and its ::after
+   stretches over the whole row, so clicking anywhere still opens the task. */
+.t2-row-text { display: flex; flex-direction: column; min-width: 0; text-align: left; cursor: pointer; }
+.t2-row-text::after { content: ''; position: absolute; inset: 0; }
 .t2-row-title { font-size: 0.9rem; font-weight: 500; }
 .t2-row-title--done { text-decoration: line-through; color: var(--muted); }
 .t2-row-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.1rem; }
 
 .t2-check {
+  position: relative; /* stays above .t2-row-text's stretched ::after */
+  z-index: 1;
   flex-shrink: 0;
   width: 18px;
   height: 18px;
@@ -1837,6 +1844,18 @@
   .t2-detail-back { display: inline-flex; }
   .tasks2--details-hidden .tasks2-detail { display: block; }
   .tasks2-board { grid-template-columns: 1fr; }
+}
+
+/* The nav rail is a bottom bar at this width (see styles/responsive.css):
+   clear its height instead of its old left edge. */
+@media (max-width: 600px) {
+  .tasks2 { bottom: var(--rail-h, 0px); }
+  .t2-support-pop {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    bottom: calc(var(--rail-h, 0px) + 1rem);
+  }
 }
 
 /* lightning strike animation (bolt paths draw + flicker) */

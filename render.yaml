@@ -30,5 +30,3 @@ services:
         sync: false
       - key: VITE_WEB3FORMS_KEY
         sync: false
-      - key: VITE_SPOTIFY_CLIENT_ID
-        sync: false

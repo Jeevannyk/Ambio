@@ -44,6 +44,15 @@ function BackgroundVideo({ scene }) {
     }
   };
 
+  // The gradient stays as the fallback, but never fail silently — a clip that
+  // can't load is almost always a missing/corrupt file in public/videos.
+  const handleError = () => {
+    setVideoOk(false);
+    console.error(
+      `[BackgroundVideo] scene "${scene.id}" could not load "${currentSrc}" — showing the gradient instead.`
+    );
+  };
+
   return (
     <div
       className="bg-video-wrapper"
@@ -59,10 +68,10 @@ function BackgroundVideo({ scene }) {
         autoPlay
         preload="auto"
         onCanPlay={() => setVideoOk(true)}
-        onError={() => setVideoOk(false)}
+        onError={handleError}
         onEnded={handleEnded}
       >
-        {currentSrc && <source src={currentSrc} type="video/mp4" />}
+        {currentSrc && <source src={currentSrc} type="video/mp4" onError={handleError} />}
       </video>
       <div className="bg-overlay" />
     </div>

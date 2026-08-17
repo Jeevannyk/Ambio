@@ -1,0 +1,82 @@
+/* The boundary sits above <App/>, so it can render before App's token/shell
+   CSS has evaluated — every var() carries the dark-palette fallback. */
+.error-boundary {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  background: #0a0f1a;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+.error-boundary__card {
+  width: 100%;
+  max-width: 460px;
+  padding: 2.25rem;
+  border: 1px solid var(--border, #374151);
+  border-radius: 16px;
+  background: var(--glass-bg, rgba(15, 20, 35, 0.72));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  text-align: left;
+}
+
+.error-boundary__eyebrow {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-family: monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent, #f5c518);
+  border: 1px solid var(--accent, #f5c518);
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+.error-boundary__title {
+  font-family: 'Young Serif', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text, #f3f4f6);
+  margin: 0 0 0.75rem;
+}
+
+.error-boundary__body {
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--muted, #9ca3af);
+  margin: 0 0 1.75rem;
+}
+
+.error-boundary__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--accent, #f5c518);
+  color: var(--brand-contrast, #1a1400);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.error-boundary__action:hover {
+  background: var(--accent-hover, #fbd24b);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .error-boundary__action:hover {
+    transform: none;
+  }
+}

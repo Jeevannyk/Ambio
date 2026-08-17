@@ -602,7 +602,7 @@ function TasksPage() {
   }, [visible]);
 
   const renderTaskRow = (task, { compact = false } = {}) => (
-    <button
+    <div
       key={task.id}
       data-tid={task.id}
       className={
@@ -612,41 +612,42 @@ function TasksPage() {
         (multiSelect && selectedIds.has(task.id) ? ' t2-row--selected' : '') +
         (removingIds.has(task.id) ? ' t2-row--removing' : '')
       }
-      onClick={() => {
-        if (multiSelect) toggleTaskSelection(task.id);
-        else setSelectedId(task.id);
-      }}
     >
       {multiSelect ? (
-        <span
+        <button
+          type="button"
           className={'t2-check t2-check--select' + (selectedIds.has(task.id) ? ' t2-check--done' : '')}
           role="checkbox"
           aria-checked={selectedIds.has(task.id)}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleTaskSelection(task.id);
-          }}
+          aria-label={`Select: ${task.text}`}
+          onClick={() => toggleTaskSelection(task.id)}
         >
           {selectedIds.has(task.id) && <Check size={12} />}
-        </span>
+        </button>
       ) : (
-        <span
+        <button
+          type="button"
           className={'t2-check' + (task.done ? ' t2-check--done' : '')}
           role="checkbox"
           aria-checked={task.done}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleTask(task.id);
-          }}
+          aria-label={`${task.done ? 'Mark not done' : 'Mark done'}: ${task.text}`}
+          onClick={() => toggleTask(task.id)}
         >
           {task.done && <Check size={12} />}
-        </span>
+        </button>
       )}
-      <span className="t2-row-text">
+      <button
+        type="button"
+        className="t2-row-text"
+        onClick={() => {
+          if (multiSelect) toggleTaskSelection(task.id);
+          else setSelectedId(task.id);
+        }}
+      >
         <span className={'t2-row-title' + (task.done ? ' t2-row-title--done' : '')}>{task.text}</span>
         <span className="t2-row-sub">{task.list}</span>
-      </span>
-    </button>
+      </button>
+    </div>
   );
 
   const renderSection = (bucket, { compact = false } = {}) => {
@@ -932,45 +933,49 @@ function TasksPage() {
             <div className="t2-rows" ref={rowsRef}>
               {visible.length === 0 && <p className="t2-empty">No tasks yet. Add one below.</p>}
               {visible.map((t, i) => (
-                <button
+                <div
                   key={t.id}
                   data-tid={t.id}
                   className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '') + (removingIds.has(t.id) ? ' t2-row--removing' : '')}
                   style={multiSelect ? { touchAction: 'none' } : undefined}
-                  onClick={() => {
-                    if (!multiSelect) { setSelectedId(t.id); setDetailOpen(true); }
-                  }}
                   onPointerDown={() => { if (multiSelect) startDragSelect(i); }}
                   onPointerEnter={() => dragOverRow(i)}
                 >
                   {multiSelect ? (
-                    <span
+                    <button
+                      type="button"
                       className={'t2-check t2-check--select' + (selectedIds.has(t.id) ? ' t2-check--done' : '')}
                       role="checkbox"
                       aria-checked={selectedIds.has(t.id)}
+                      aria-label={`Select: ${t.text}`}
                       onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleTaskSelection(t.id);
-                      }}
+                      onClick={() => toggleTaskSelection(t.id)}
                     >
                       {selectedIds.has(t.id) && <Check size={12} />}
-                    </span>
+                    </button>
                   ) : (
-                    <span
+                    <button
+                      type="button"
                       className={'t2-check' + (t.done ? ' t2-check--done' : '')}
                       role="checkbox"
                       aria-checked={t.done}
-                      onClick={(e) => { e.stopPropagation(); toggleTask(t.id); }}
+                      aria-label={`${t.done ? 'Mark not done' : 'Mark done'}: ${t.text}`}
+                      onClick={() => toggleTask(t.id)}
                     >
                       {t.done && <Check size={12} />}
-                    </span>
+                    </button>
                   )}
-                  <span className="t2-row-text">
+                  <button
+                    type="button"
+                    className="t2-row-text"
+                    onClick={() => {
+                      if (!multiSelect) { setSelectedId(t.id); setDetailOpen(true); }
+                    }}
+                  >
                     <span className={'t2-row-title' + (t.done ? ' t2-row-title--done' : '')}>{t.text}</span>
                     <span className="t2-row-sub">{t.list}</span>
-                  </span>
-                </button>
+                  </button>
+                </div>
               ))}
             </div>
             <form className="t2-add" onSubmit={addTask}>
@@ -1063,14 +1068,16 @@ function TasksPage() {
                 <div className="t2-subs">
                   {selected.subtasks.map((s) => (
                     <div key={s.id} className="t2-sub">
-                      <span
+                      <button
+                        type="button"
                         className={'t2-check t2-check--sm' + (s.done ? ' t2-check--done' : '')}
                         onClick={() => toggleSubtask(s.id)}
                         role="checkbox"
                         aria-checked={s.done}
+                        aria-label={`${s.done ? 'Mark not done' : 'Mark done'}: ${s.text}`}
                       >
                         {s.done && <Check size={11} />}
-                      </span>
+                      </button>
                       <span className={'t2-sub-text' + (s.done ? ' t2-sub-text--done' : '')}>{s.text}</span>
                       <button className="t2-sub-del" onClick={() => removeSubtask(s.id)} aria-label="Remove subtask">×</button>
                     </div>

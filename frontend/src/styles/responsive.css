@@ -1,10 +1,91 @@
 /* ---- Rooms page (see RoomsPage.css) ---- */
 
-/* ── Mobile ──────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .content-area {
-    margin-left: 84px;
-    padding: 1.25rem 1rem;
+@keyframes rail-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 
+/* ── Mobile ──────────────────────────────────────────────────────── */
+/* The rail stops being a left column and becomes a bottom bar, so everything
+   that used to clear its left edge now clears its height (--rail-h) instead. */
+@media (max-width: 600px) {
+  :root {
+    --rail-h: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .content-area {
+    margin-left: 0;
+    padding: 1.25rem 1rem calc(1.25rem + var(--rail-h));
+  }
+
+  .rail {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    height: var(--rail-h);
+    flex-direction: row;
+    align-items: center;
+    padding: 0 0.25rem env(safe-area-inset-bottom, 0px);
+    border-radius: 16px 16px 0 0;
+    animation-name: rail-slide-up;
+  }
+
+  /* Both groups collapse so every item is a direct child of the bar and they
+     all get the same width — a 4/3 split would squeeze the nav labels. The
+     group divider goes with the box; a bottom bar doesn't need one. */
+  .rail-group {
+    display: contents;
+  }
+
+  .rail-item {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    gap: 0.15rem;
+    padding: 0.3rem 0.15rem;
+  }
+
+  /* Scale-on-hover reads as a jitter on touch; the active pill is enough. */
+  .rail-item:hover {
+    transform: none;
+  }
+
+  .rail-item-label {
+    font-size: 0.55rem;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Left-docked floating widgets move above the bar and go full width. */
+  .pomo-widget-wrap {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(var(--rail-h) + 0.75rem);
+  }
+
+  /* .yt-card lives in components/YouTubePlayer.css; it is anchored to the
+     rail's left edge, so its mobile offset belongs with the rest of them. */
+  .yt-card {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    bottom: calc(var(--rail-h) + 4rem);
+    max-height: calc(100dvh - var(--rail-h) - 6rem);
+  }
+
+  .themes-panel {
+    top: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
+    width: auto;
+    bottom: calc(var(--rail-h) + 0.5rem);
+  }
+}

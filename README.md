@@ -8,9 +8,8 @@ A calm place to focus. Pick a cozy background (forest, ocean, city at night, rai
 - **Play music** — a built-in music player to keep you in the zone.
 - **Focus timer** — a Pomodoro timer (work / break cycles) that floats on screen.
 - **To-do list** — a clean tasks page with notes, subtasks, reminders, tags, and a streak calendar.
-- **Study rooms** — create or join a private video room (with a code) and focus alongside others.
+- **Study rooms** — join a private video room with a code and focus alongside others.
 - **Your own account** — sign up / log in so your stuff is saved.
-- **Light & dark mode** — one click to switch.
 
 ## Run it on your computer
 

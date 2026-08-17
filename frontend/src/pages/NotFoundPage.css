@@ -1,0 +1,74 @@
+/* frontend/src/pages/NotFoundPage.css */
+
+.notfound-page {
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+.notfound-code {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-family: monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+.notfound-title {
+  font-family: 'Young Serif', Georgia, serif;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 0.9rem;
+}
+
+.notfound-body {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0 0 2rem;
+  max-width: 46ch;
+}
+
+.notfound-path {
+  font-family: monospace;
+  font-size: 0.85em;
+  color: var(--text);
+  background: var(--border);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.notfound-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.notfound-action:hover {
+  border-color: var(--accent);
+  transform: translateX(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notfound-action:hover {
+    transform: none;
+  }
+}

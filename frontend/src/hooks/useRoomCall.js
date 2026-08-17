@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Room, RoomEvent, Track } from 'livekit-client';
+import { Room, RoomEvent, Track, DisconnectReason } from 'livekit-client';
 import { supabase } from '../lib/supabase';
 
 /*
@@ -14,21 +14,38 @@ import { supabase } from '../lib/supabase';
  *   chat     : {id, name, text, ts}           chat message
  *   reaction : {emoji}                        floating emoji
  *   pomodoro : {mode, secondsLeft, running}   host broadcasts timer
- *   mute     : {}                             admin force-mutes you
- *   kick     : {}                             admin removes you
+ *   mute     : {}                             host force-mutes you
+ *   kick     : {}                             host removes you
+ *
+ * pomodoro / mute / kick are only honoured from the current host's identity —
+ * anyone can publish data, so the sender has to be checked. Removal is backed
+ * by /api/kick (LiveKit admin API) so it doesn't depend on the target's client
+ * playing along.
  *
  * The public API (return value) is identical to the old PeerJS hook, so the
  * room UI, VideoTile, and PreJoin all work unchanged.
  */
 
 const TOKEN_ENDPOINT = import.meta.env.VITE_TOKEN_ENDPOINT || '/api/token';
+const KICK_ENDPOINT = TOKEN_ENDPOINT.replace(/\/token$/, '/kick');
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
+// Prove we're a signed-in user so the server will act for us.
+async function authHeaders() {
+  if (!supabase) return {};
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data?.session?.access_token;
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+}
 
 export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
   const initMic = initial.micOn ?? true;
   const initCam = initial.camOn ?? true;
-  const [status, setStatus] = useState('connecting'); // connecting | live | error | ended | full
+  // connecting | live | ended | full | replaced | auth-error | token-error | connect-error
+  const [status, setStatus] = useState('connecting');
+  const [errorDetail, setErrorDetail] = useState(''); // server/SDK message for the error screens
+  const [mediaError, setMediaError] = useState(null); // 'mic' | 'cam' | 'both' — non-fatal
   const [isHost, setIsHost] = useState(false);
   const [localStream, setLocalStream] = useState(null);
   const [micOn, setMicOn] = useState(initMic);
@@ -44,6 +61,7 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
   const roomRef = useRef(null);
   const myIdRef = useRef('');
   const isHostRef = useRef(false);
+  const hostIdRef = useRef(null); // identity of the current host (who we obey)
   const handRaisedRef = useRef(false);
   const maxRef = useRef(max);
   const handsRef = useRef(new Map()); // identity -> hand raised
@@ -116,22 +134,34 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
 
     // Earliest joiner is the host; recompute on every roster change so host
     // migrates cleanly if the current host leaves.
+    // Compared at whole-second resolution because /api/kick elects the host
+    // from LiveKit's server roster, which only reports joinedAt in seconds.
+    // Same precision + same tiebreak on both sides => both elect the same
+    // person, so the crown we show is the one the server will honour.
+    const joinSecond = (p) => {
+      const t = p.joinedAt?.getTime?.();
+      return typeof t === 'number' ? Math.floor(t / 1000) : Infinity;
+    };
     const recomputeHost = () => {
       const all = [room.localParticipant, ...room.remoteParticipants.values()];
       const timed = all.filter((p) => p.joinedAt);
       const pool = timed.length ? timed : all;
       const host = pool.reduce((a, b) => {
-        const ta = a.joinedAt?.getTime?.() ?? Infinity;
-        const tb = b.joinedAt?.getTime?.() ?? Infinity;
+        const ta = joinSecond(a);
+        const tb = joinSecond(b);
         if (ta !== tb) return ta < tb ? a : b;
         return a.identity < b.identity ? a : b; // stable tiebreak
       });
       const mine = host === room.localParticipant;
+      hostIdRef.current = host.identity;
       isHostRef.current = mine;
       setIsHost(mine);
     };
 
     const handleData = (fromId, msg) => {
+      // Anyone can publish data, so control messages are only obeyed when they
+      // come from the host we elected locally.
+      const fromHost = !!fromId && fromId === hostIdRef.current;
       switch (msg.t) {
         case 'hand':
           handsRef.current.set(fromId, msg.raised);
@@ -144,13 +174,17 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
           setReactions((r) => [...r, { key: `${fromId}-${Date.now()}-${Math.random()}`, emoji: msg.emoji }]);
           break;
         case 'pomodoro':
+          if (!fromHost) break;
           setRemotePomodoro({ mode: msg.mode, secondsLeft: msg.secondsLeft, running: msg.running });
           break;
         case 'mute':
+          if (!fromHost) break;
           room.localParticipant.setMicrophoneEnabled(false);
           setMicOn(false);
           break;
         case 'kick':
+          // Courtesy notice — /api/kick is what actually removes people.
+          if (!fromHost) break;
           room.disconnect();
           setStatus('ended');
           break;
@@ -182,35 +216,44 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
         try { msg = JSON.parse(decoder.decode(payload)); } catch { return; }
         handleData(participant?.identity, msg);
       })
-      .on(RoomEvent.Disconnected, () => {
-        if (!cancelled) setStatus((s) => (s === 'full' ? s : 'ended'));
+      .on(RoomEvent.Disconnected, (reason) => {
+        if (cancelled) return;
+        // Identity is the Supabase user id, so joining from a second tab or
+        // device evicts this one. That isn't an error — say what happened.
+        if (reason === DisconnectReason.DUPLICATE_IDENTITY) { setStatus('replaced'); return; }
+        // Don't paper over a terminal state with the generic "ended" screen.
+        setStatus((s) => (s === 'full' || s.endsWith('error') ? s : 'ended'));
       });
+
+    const fail = (next, detail) => {
+      if (cancelled) return;
+      setErrorDetail(detail || '');
+      setStatus(next);
+    };
 
     async function start() {
       let url, token;
       try {
-        const identity = (crypto.randomUUID && crypto.randomUUID()) || `u-${Date.now()}-${Math.random()}`;
-        const qs = `room=${encodeURIComponent(roomId)}&identity=${encodeURIComponent(identity)}&name=${encodeURIComponent(displayName)}`;
-        // Prove we're a signed-in user so the server mints a token (gates abuse).
-        const headers = {};
-        if (supabase) {
-          const { data } = await supabase.auth.getSession();
-          const accessToken = data?.session?.access_token;
-          if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+        // identity + display name are assigned server-side from our session.
+        const resp = await fetch(`${TOKEN_ENDPOINT}?room=${encodeURIComponent(roomId)}`, {
+          headers: await authHeaders(),
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => null);
+          fail(resp.status === 401 ? 'auth-error' : 'token-error', body?.error || `HTTP ${resp.status}`);
+          return;
         }
-        const resp = await fetch(`${TOKEN_ENDPOINT}?${qs}`, { headers });
-        if (!resp.ok) throw new Error('token request failed');
         ({ url, token } = await resp.json());
-        if (!url || !token) throw new Error('bad token response');
-      } catch {
-        if (!cancelled) setStatus('error');
+        if (!url || !token) throw new Error('the server returned an incomplete join pass');
+      } catch (err) {
+        fail('token-error', err?.message);
         return;
       }
 
       try {
         await room.connect(url, token);
-      } catch {
-        if (!cancelled) setStatus('error');
+      } catch (err) {
+        fail('connect-error', err?.message);
         return;
       }
       if (cancelled) return room.disconnect();
@@ -224,20 +267,31 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
         return;
       }
 
-      // Apply the mic/cam + device choices from the pre-join screen.
+      // Apply the mic/cam + device choices from the pre-join screen. A blocked
+      // device isn't fatal (you can still watch and listen), but it must be
+      // reported instead of silently swallowed.
+      let micFailed = false;
+      let camFailed = false;
       try {
         await room.localParticipant.setMicrophoneEnabled(
           initMic,
           initial.audioDeviceId ? { deviceId: initial.audioDeviceId } : undefined
         );
-      } catch { /* no mic */ }
+      } catch {
+        micFailed = true;
+        setMicOn(false);
+      }
       try {
         await room.localParticipant.setCameraEnabled(
           initCam,
           initial.videoDeviceId ? { deviceId: initial.videoDeviceId } : undefined
         );
       } catch {
+        camFailed = true;
         setCamOn(false);
+      }
+      if (!cancelled && (micFailed || camFailed)) {
+        setMediaError(micFailed && camFailed ? 'both' : micFailed ? 'mic' : 'cam');
       }
 
       recomputeHost();
@@ -331,10 +385,24 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
     [publish]
   );
 
-  // Admin actions: ask the target to self-mute / leave over data (no server
-  // admin call needed). Works because every client honors these messages.
+  // Host actions. Mute is a request the target's client honours (only from the
+  // host). Removal can't be left to the target's goodwill, so it goes through
+  // /api/kick, which re-checks who the host is and evicts them via LiveKit's
+  // admin API; the data message is just an instant heads-up.
   const muteParticipant = useCallback((id) => publish({ t: 'mute' }, [id]), [publish]);
-  const kickParticipant = useCallback((id) => publish({ t: 'kick' }, [id]), [publish]);
+  const kickParticipant = useCallback(
+    async (id) => {
+      publish({ t: 'kick' }, [id]);
+      try {
+        await fetch(KICK_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+          body: JSON.stringify({ room: roomId, identity: id }),
+        });
+      } catch { /* they'll still be gone if they honoured the message */ }
+    },
+    [publish, roomId]
+  );
 
   const leave = useCallback(() => {
     roomRef.current?.disconnect();
@@ -343,6 +411,8 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
 
   return {
     status,
+    errorDetail,
+    mediaError,
     isHost,
     isAdmin: isHost,
     localStream,

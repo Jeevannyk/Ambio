@@ -8,6 +8,7 @@ import YouTubeWallpaper from './components/YouTubeWallpaper';
 import SceneSelector from './components/SceneSelector';
 import YouTubePlayer from './components/YouTubePlayer';
 import PomodoroWidget from './components/PomodoroWidget';
+import NotFoundPage from './pages/NotFoundPage';
 import { usePomodoro } from './hooks/usePomodoro';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { isAuthRoute } from './lib/auth';
@@ -207,6 +208,10 @@ function App() {
               <Route path="/my-room" element={<RequireAuth><MyRoomPage pomodoro={pomodoro} /></RequireAuth>} />
               <Route path="/rooms" element={<RequireAuth><RoomsPage /></RequireAuth>} />
               <Route path="/rooms/:id" element={<RequireAuth><RoomCall pomodoro={pomodoro} /></RequireAuth>} />
+              {/* The server serves index.html for every path, so unknown URLs
+                  land here instead of on an empty content area. Not lazy: a 404
+                  shouldn't need another round trip to render. */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
         </ContentArea>

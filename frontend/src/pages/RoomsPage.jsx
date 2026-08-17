@@ -59,7 +59,8 @@ function RoomsPage() {
     setError('');
   };
 
-  const enterRoom = (id) => navigate(`/rooms/${id}`);
+  // Hand the row over so the room page doesn't have to re-fetch it.
+  const enterRoom = (room) => navigate(`/rooms/${room.id}`, { state: { room } });
 
   const joinByCode = (e) => {
     e.preventDefault();
@@ -286,7 +287,7 @@ function RoomsPage() {
                   </span>
                 </button>
 
-                <button className="join-action-btn" onClick={() => enterRoom(room.id)}>
+                <button className="join-action-btn" onClick={() => enterRoom(room)}>
                   <SignIn size={14} />
                   <span>Connect</span>
                 </button>

@@ -8,24 +8,36 @@ import {
 import { useRoomCall } from '../hooks/useRoomCall';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
 import { formatTime } from '../hooks/usePomodoro';
+import { supabase } from '../lib/supabase';
 import VideoTile from '../components/room/VideoTile';
 import PreJoin from '../components/room/PreJoin';
 import CodeGate from '../components/room/CodeGate';
 import AudioReactiveBorder from '../components/audio/AudioReactiveBorder';
 import './RoomCall.css';
 
-const ROOMS_KEY = 'react-todo-app.rooms';
 const EMOJIS = ['👍', '❤️', '🎉', '😂', '🔥', '👏'];
 
-function roomInfo(id) {
-  try {
-    const rooms = JSON.parse(localStorage.getItem(ROOMS_KEY)) || [];
-    const r = rooms.find((x) => x.id === id);
-    return { name: r?.name || 'Focus Room', max: r?.max ?? Infinity };
-  } catch {
-    return { name: 'Focus Room', max: Infinity };
-  }
-}
+// Fatal join failures — each one needs its own, actionable copy.
+const ERROR_COPY = {
+  'auth-error': {
+    title: 'Your session expired',
+    body: 'Sign in again, then rejoin the room.',
+  },
+  'token-error': {
+    title: 'Couldn’t get a join pass',
+    body: 'The server wouldn’t issue a pass for this room. It may be misconfigured or temporarily down — try again in a moment.',
+  },
+  'connect-error': {
+    title: 'Couldn’t connect to the room',
+    body: 'The pass was issued but the media server didn’t answer. Check your connection or a strict firewall, then try again.',
+  },
+};
+
+const MEDIA_ERROR_TEXT = {
+  mic: 'Microphone unavailable — check browser permissions',
+  cam: 'Camera unavailable — check browser permissions',
+  both: 'Camera and microphone blocked — check browser permissions',
+};
 
 /*
  * Gate: show the pre-join screen until the user enters a name, then mount
@@ -36,7 +48,10 @@ function RoomCall({ pomodoro }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const info = roomInfo(id);
+  // Rooms live in Supabase. The Rooms page hands the row over via router state;
+  // invite links and refreshes fall back to fetching it here.
+  const [room, setRoom] = useState(location.state?.room ?? null);
+  const [roomState, setRoomState] = useState(location.state?.room ? 'ready' : 'loading'); // loading | ready | missing | error
   // Auto-pass the gate only if they JUST typed the code on the Rooms page
   // (so the invite-code flow doesn't ask them to type it twice).
   const [verified, setVerified] = useState(
@@ -44,10 +59,50 @@ function RoomCall({ pomodoro }) {
   );
   const [session, setSession] = useState(null); // { name, micOn, camOn } | null
 
+  useEffect(() => {
+    if (roomState !== 'loading') return;
+    if (!supabase) { setRoomState('error'); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('id, name, max')
+        .eq('id', id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) setRoomState('error');
+      else if (!data) setRoomState('missing');
+      else { setRoom(data); setRoomState('ready'); }
+    })();
+    return () => { cancelled = true; };
+  }, [id, roomState]);
+
+  if (roomState === 'loading') {
+    return (
+      <div className="rc-error">
+        <h2>Loading room…</h2>
+      </div>
+    );
+  }
+
+  if (roomState !== 'ready') {
+    return (
+      <div className="rc-error">
+        <h2>{roomState === 'missing' ? 'Room not found' : 'Rooms unavailable'}</h2>
+        <p>
+          {roomState === 'missing'
+            ? 'That code doesn’t match any room. Double-check it with the host.'
+            : 'Could not load this room. Check your connection and try again.'}
+        </p>
+        <button className="rc-leave-btn" onClick={() => navigate('/rooms')}>Back to Rooms</button>
+      </div>
+    );
+  }
+
   if (!verified) {
     return (
       <CodeGate
-        roomName={info.name}
+        roomName={room.name}
         expected={id}
         onVerified={() => setVerified(true)}
         onBack={() => navigate('/rooms')}
@@ -58,7 +113,7 @@ function RoomCall({ pomodoro }) {
   if (!session) {
     return (
       <PreJoin
-        roomName={info.name}
+        roomName={room.name}
         onJoin={(name, prefs) => setSession({ name, ...prefs })}
         onBack={() => navigate('/rooms')}
       />
@@ -68,7 +123,7 @@ function RoomCall({ pomodoro }) {
   return (
     <RoomLive
       id={id}
-      info={info}
+      info={room}
       pomodoro={pomodoro}
       displayName={session.name}
       initial={{
@@ -83,7 +138,7 @@ function RoomCall({ pomodoro }) {
 
 function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const navigate = useNavigate();
-  const call = useRoomCall(id, displayName, info.max, initial);
+  const call = useRoomCall(id, displayName, info.max ?? Infinity, initial);
   const [panel, setPanel] = useState(null); // 'chat' | 'people' | null
   const [chatText, setChatText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -95,6 +150,12 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   // Auto-hide the top/bottom bars after 3s of inactivity (immersive mode).
   const { visible: barsVisible, bindHover } = useAutoHideControls(3000);
   const chatEndRef = useRef(null);
+
+  // Chat payloads carry a client-supplied name, so they're spoofable. The
+  // roster name comes from the server-signed token — resolve against that and
+  // ignore what the message claims.
+  const senderName = (m) =>
+    call.participants.find((p) => p.id === m.id)?.name || 'Unknown';
   const knownRef = useRef(new Map()); // id -> last known name (for join/leave toasts)
 
   // Track fullscreen state (also catches Esc / browser-driven exits).
@@ -146,6 +207,11 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   useEffect(() => {
     if (call.status === 'ended') navigate('/rooms');
   }, [call.status, navigate]);
+
+  // A blocked mic/camera doesn't end the call — say so instead of failing mute.
+  useEffect(() => {
+    if (call.mediaError) pushToast(MEDIA_ERROR_TEXT[call.mediaError]);
+  }, [call.mediaError, pushToast]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -207,11 +273,13 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
     setChatText('');
   };
 
-  if (call.status === 'error') {
+  const fatal = ERROR_COPY[call.status];
+  if (fatal) {
     return (
       <div className="rc-error">
-        <h2>Camera / mic blocked</h2>
-        <p>Allow camera and microphone access in your browser, then rejoin.</p>
+        <h2>{fatal.title}</h2>
+        <p>{fatal.body}</p>
+        {call.errorDetail && <p>({call.errorDetail})</p>}
         <button className="rc-leave-btn" onClick={() => navigate('/rooms')}>Back to Rooms</button>
       </div>
     );
@@ -223,6 +291,16 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
         <h2>Room is full</h2>
         <p>This room has reached its {info.max}-participant limit. Try again later or join a different room.</p>
         <button className="rc-leave-btn" onClick={() => navigate('/rooms')}>Back to Rooms</button>
+      </div>
+    );
+  }
+
+  if (call.status === 'replaced') {
+    return (
+      <div className="rc-error">
+        <h2>You joined from another device</h2>
+        <p>A room only holds one window per account, so this one was disconnected. Rejoin here to move the session back.</p>
+        <button className="rc-leave-btn" onClick={() => window.location.reload()}>Rejoin here</button>
       </div>
     );
   }
@@ -358,7 +436,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
               {call.messages.length === 0 && <p className="rc-chat-empty">No messages yet. Say hi 👋</p>}
               {call.messages.map((m, i) => (
                 <div key={i} className={'rc-msg' + (m.id === call.myId ? ' rc-msg--me' : '')}>
-                  <span className="rc-msg-name">{m.id === call.myId ? 'You' : m.name}</span>
+                  <span className="rc-msg-name">{m.id === call.myId ? 'You' : senderName(m)}</span>
                   <span className="rc-msg-text">{m.text}</span>
                 </div>
               ))}
