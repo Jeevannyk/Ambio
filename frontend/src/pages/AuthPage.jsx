@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeClosed, X } from '@phosphor-icons/react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useAuth } from '../lib/AuthContext';
 import './AuthPage.css';
 
 // Small brand glyphs (lucide has no brand logos).
@@ -50,6 +51,7 @@ function errorCopy(e) {
 function AuthPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const { pathname } = location;
   const [mode, setMode] = useState(() => (pathname === '/login' ? 'signin' : 'signup')); // 'signup' | 'signin'
   const [anim, setAnim] = useState(''); // '' | 'out' | 'in' | 'exit'
@@ -72,12 +74,21 @@ function AuthPage() {
 
   const close = useCallback(() => navigate('/'), [navigate]);
 
+  // Dismissing only means something with a session: '/' is behind RequireAuth,
+  // so a signed-out visitor would be bounced straight back here — the X and
+  // Escape looked broken. Both are wired up only when there's a room to return
+  // to (someone already signed in who wandered onto /login); otherwise the card
+  // is the whole page and admits it by not offering a way out. Same call as
+  // NotFoundPage's `home`.
+  const canClose = !!user;
+
   // The card reads as a dismissible modal, so Escape does what the X does.
   useEffect(() => {
+    if (!canClose) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [close]);
+  }, [close, canClose]);
 
   // Where to land after a successful sign-in: back to whatever the user was
   // trying to reach (RequireAuth stashes it), else home.
@@ -144,7 +155,10 @@ function AuthPage() {
         const { data, error } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
-          options: { data: { full_name: form.name } },
+          // Pin the confirmation link to the origin the user actually signed up
+          // on. Without it Supabase falls back to the project's Site URL, which
+          // has pointed at localhost in production. Mirrors oauth()'s redirectTo.
+          options: { emailRedirectTo: window.location.origin, data: { full_name: form.name } },
         });
         if (error) throw error;
         // If email confirmation is ON, there's no session yet. Supabase also
@@ -172,17 +186,47 @@ function AuthPage() {
     }
   };
 
+  // Set while we're handing the tab over to an OAuth provider — see the release
+  // effect below.
+  const oauthHandoffRef = useRef(false);
+
+  // `busy` survives the OAuth handoff on purpose (the redirect is meant to take
+  // the page with it), but the handoff isn't always final: Back — or a provider
+  // that bounces the user right back — restores this document from the bfcache
+  // with the flag still true, and every control stays disabled forever.
+  // `pageshow` fires both on a bfcache restore (event.persisted) and on a plain
+  // load, so we don't branch on it: a back-nav that missed the cache re-runs the
+  // module with busy already false, where releasing is a no-op. And since
+  // pageshow only ever fires on load/restore, it can't cut an in-flight submit
+  // loose. visibilitychange is the fallback for a page that's never unloaded at
+  // all (an in-app browser sheet dismissed on iOS) — that one has to check we
+  // were mid-handoff, or tab-switching during a password submit would unlock the
+  // form while the request is still running.
+  useEffect(() => {
+    const release = () => { oauthHandoffRef.current = false; setBusy(false); };
+    const onVisibility = () => { if (!document.hidden && oauthHandoffRef.current) release(); };
+    window.addEventListener('pageshow', release);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pageshow', release);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
   const oauth = async (provider) => {
     setErr(''); setInfo('');
     if (!isSupabaseConfigured) { setErr('Auth not configured yet (missing Supabase keys).'); return; }
     // signInWithOAuth does a round-trip before it redirects; without a busy flag
     // a slow connection looks like a dead button and gets clicked again.
     setBusy(true);
+    oauthHandoffRef.current = true;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: window.location.origin },
     });
-    if (error) { setErr(errorCopy(error)); setBusy(false); } // otherwise the redirect takes over
+    // Otherwise the redirect takes over — and if the user comes back instead,
+    // the release effect above clears busy.
+    if (error) { setErr(errorCopy(error)); setBusy(false); oauthHandoffRef.current = false; }
   };
 
   return (
@@ -313,8 +357,12 @@ function AuthPage() {
         {/* Last in the DOM so the first Tab lands on a field, not "Close"; it's
             absolutely positioned against .auth-card, so order doesn't move it.
             Kept off .auth-right — that column is hidden ≤800px and would take
-            the only way out of /login with it. */}
-        <button className="auth-close" onClick={close} disabled={busy} aria-label="Close"><X size={18} /></button>
+            the only way out of /login with it. Only shown when there's a session
+            to close back to (see `canClose`), and not during the sign-in
+            fade-away, where it would pop in as the card leaves. */}
+        {canClose && anim !== 'exit' && (
+          <button className="auth-close" onClick={close} disabled={busy} aria-label="Close"><X size={18} /></button>
+        )}
       </div>
     </div>
   );
