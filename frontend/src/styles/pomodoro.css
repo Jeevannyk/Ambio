@@ -204,6 +204,12 @@
   color: var(--text);
   transform: rotate(90deg);
 }
+/* Press feedback stacks on the hover rotation rather than cancelling it, so
+   this one can't live in the shared :active block in index.css. */
+.pomo-expand-close:active {
+  transform: rotate(90deg) scale(0.97);
+  transition: transform 100ms ease-out;
+}
 
 /* big conic ring */
 .pomo-expand-ring-wrap {

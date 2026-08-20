@@ -11,3 +11,12 @@ body {
   outline: 2px solid var(--brand, #f5c518);
   outline-offset: 2px;
 }
+
+/* ---- Shared press feedback. Hover doesn't exist on touch, so every
+   interactive surface also confirms on pointer-down. ---- */
+.rail-item:active, .theme-card-thumb:active, .themes-tab:active,
+.t2-menu-item:active, .theme-card-fav:active, .pomo-expand-chip:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+

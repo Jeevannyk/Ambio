@@ -109,7 +109,14 @@
 .rail-item:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  transform: scale(1.1);
+}
+
+/* Transform only on real pointers: on touch a hover state sticks after the tap.
+   `:not(:active)` lets the shared press feedback in index.css win the cascade. */
+@media (hover: hover) and (pointer: fine) {
+  .rail-item:hover:not(:active) {
+    transform: scale(1.1);
+  }
 }
 
 .rail-item--active {
