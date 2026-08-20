@@ -20,3 +20,27 @@ body {
   transition: transform 100ms ease-out;
 }
 
+/* ---- Reduced transparency: drop the glass for an opaque surface.
+   !important because this file is bundled before the component styles that
+   set the blur, and some of those selectors are more specific. ---- */
+@media (prefers-reduced-transparency: reduce) {
+  .rail, .themes-panel, .pomo-widget, .pomo-expand, .tasks2-list, .tasks2-detail {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: var(--surface) !important;
+  }
+}
+
+/* ---- Reduced motion, applied globally so the files that ship keyframes
+   without their own block are covered too. Duration is collapsed rather than
+   the animation removed, so `animationend` handlers still fire. ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Keep the opacity change that carries meaning; drop the travel. */
+  .themes-panel, .pomo-expand, .content-area, .rail { transform: none !important; }
+}
