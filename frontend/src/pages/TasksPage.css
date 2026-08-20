@@ -113,16 +113,32 @@
   border: 1px solid var(--layout-border);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
   z-index: 60;
-  animation: dropMenuEntrance 0.2s var(--ios-ease);
+  /* Scale out of the trigger it hangs from, not from its own centre. */
+  transform-origin: top left;
+  /* Enter and exit along the same path. `allow-discrete` lets the menu keep
+     animating while `display` flips, so closing isn't an instant vanish. */
+  transition: opacity 0.2s var(--ios-ease),
+              transform 0.2s var(--ios-ease),
+              display 0.2s allow-discrete;
 }
 
 .t2-menu-pop--view { width: 220px; }
-.t2-filter-pop { left: 0; width: 210px; }
-.t2-submenu-pop { right: 0; left: auto; width: 180px; }
+.t2-filter-pop { left: 0; width: 210px; transform-origin: top left; }
+.t2-submenu-pop { right: 0; left: auto; width: 180px; transform-origin: top right; }
 
-@keyframes dropMenuEntrance {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@starting-style {
+  .t2-menu-pop {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* `display: none` is restated because the transition needs the discrete
+   display change to animate. */
+.t2-menu-pop[hidden] {
+  display: none;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
 }
 
 .t2-menu-item {

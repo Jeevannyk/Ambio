@@ -694,6 +694,7 @@ function TasksPage() {
             <strong>All my tasks</strong>
           </div>
           <span className="t2-divider" />
+          {/* Menus stay mounted (hidden) so they can transition out — see .t2-menu-pop. */}
           <div className="t2-menu-wrap" ref={viewRef}>
             <button
               className={'t2-menu-btn' + (viewOpen ? ' t2-menu-btn--open' : '')}
@@ -707,18 +708,16 @@ function TasksPage() {
             >
               <ArrowsDownUp size={15} /> View
             </button>
-            {viewOpen && (
-              <div className="t2-menu-pop t2-menu-pop--view" role="menu" aria-label="View options">
-                <button className="t2-menu-item t2-menu-item--on" role="menuitem" onClick={toggleViewSort}>
-                  <span>Sort by</span>
-                  <span className="t2-menu-meta">{sortLabel}</span>
-                </button>
-                <button className="t2-menu-item" role="menuitem" onClick={toggleDetailsVisibility}>
-                  <span>Task details</span>
-                  <span className="t2-menu-meta">{showDetails ? 'Hide' : 'Show'}</span>
-                </button>
-              </div>
-            )}
+            <div className="t2-menu-pop t2-menu-pop--view" role="menu" aria-label="View options" hidden={!viewOpen}>
+              <button className="t2-menu-item t2-menu-item--on" role="menuitem" onClick={toggleViewSort}>
+                <span>Sort by</span>
+                <span className="t2-menu-meta">{sortLabel}</span>
+              </button>
+              <button className="t2-menu-item" role="menuitem" onClick={toggleDetailsVisibility}>
+                <span>Task details</span>
+                <span className="t2-menu-meta">{showDetails ? 'Hide' : 'Show'}</span>
+              </button>
+            </div>
           </div>
           <div className="t2-menu-wrap" ref={filterRef}>
             <button
@@ -730,78 +729,76 @@ function TasksPage() {
             >
               <Funnel size={15} /> Filter{activeFilterCount > 0 && <span className="t2-filter-badge">{activeFilterCount}</span>}
             </button>
-            {filterOpen && (
-              <div className="t2-menu-pop t2-filter-pop" role="menu" aria-label="Filter options">
-                {!filterPanel ? (
-                  <>
-                    <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('lists')}>
-                      <span className="t2-menu-item-left"><Lock size={15} className="t2-menu-item-icon" /> My lists</span>
-                      <span className="t2-menu-nav-right">{filterByLists.size > 0 && <span className="t2-filter-badge">{filterByLists.size}</span>}<CaretRight size={14} /></span>
+            <div className="t2-menu-pop t2-filter-pop" role="menu" aria-label="Filter options" hidden={!filterOpen}>
+              {!filterPanel ? (
+                <>
+                  <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('lists')}>
+                    <span className="t2-menu-item-left"><Lock size={15} className="t2-menu-item-icon" /> My lists</span>
+                    <span className="t2-menu-nav-right">{filterByLists.size > 0 && <span className="t2-filter-badge">{filterByLists.size}</span>}<CaretRight size={14} /></span>
+                  </button>
+                  <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('tags')}>
+                    <span className="t2-menu-item-left"><Hash size={15} className="t2-menu-item-icon" /> Tags</span>
+                    <span className="t2-menu-nav-right">{filterByTags.size > 0 && <span className="t2-filter-badge">{filterByTags.size}</span>}<CaretRight size={14} /></span>
+                  </button>
+                  <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('status')}>
+                    <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Status</span>
+                    <span className="t2-menu-nav-right">{filterByStatus !== 'all' && <span className="t2-filter-badge">1</span>}<CaretRight size={14} /></span>
+                  </button>
+                  {activeFilterCount > 0 && (
+                    <button className="t2-filter-clear" onClick={() => { setFilterByLists(new Set()); setFilterByTags(new Set()); setFilterByStatus('all'); }}>
+                      Clear all filters
                     </button>
-                    <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('tags')}>
-                      <span className="t2-menu-item-left"><Hash size={15} className="t2-menu-item-icon" /> Tags</span>
-                      <span className="t2-menu-nav-right">{filterByTags.size > 0 && <span className="t2-filter-badge">{filterByTags.size}</span>}<CaretRight size={14} /></span>
+                  )}
+                </>
+              ) : filterPanel === 'lists' ? (
+                <>
+                  <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> My lists</button>
+                  {LISTS.map((list) => (
+                    <button
+                      key={list}
+                      className={'t2-menu-item t2-menu-item--check' + (filterByLists.has(list) ? ' t2-menu-item--on' : '')}
+                      role="menuitemcheckbox"
+                      aria-checked={filterByLists.has(list)}
+                      onClick={() => setFilterByLists((prev) => { const next = new Set(prev); next.has(list) ? next.delete(list) : next.add(list); return next; })}
+                    >
+                      <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByLists.has(list) ? ' t2-check-dot--on' : '')}>{filterByLists.has(list) && <Check size={10} />}</span>{list}</span>
                     </button>
-                    <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('status')}>
-                      <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Status</span>
-                      <span className="t2-menu-nav-right">{filterByStatus !== 'all' && <span className="t2-filter-badge">1</span>}<CaretRight size={14} /></span>
+                  ))}
+                </>
+              ) : filterPanel === 'tags' ? (
+                <>
+                  <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Tags</button>
+                  {allTags.length === 0 ? (
+                    <p className="t2-filter-empty">No tags yet. Add tags to tasks first.</p>
+                  ) : allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      className={'t2-menu-item t2-menu-item--check' + (filterByTags.has(tag) ? ' t2-menu-item--on' : '')}
+                      role="menuitemcheckbox"
+                      aria-checked={filterByTags.has(tag)}
+                      onClick={() => setFilterByTags((prev) => { const next = new Set(prev); next.has(tag) ? next.delete(tag) : next.add(tag); return next; })}
+                    >
+                      <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByTags.has(tag) ? ' t2-check-dot--on' : '')}>{filterByTags.has(tag) && <Check size={10} />}</span>#{tag}</span>
                     </button>
-                    {activeFilterCount > 0 && (
-                      <button className="t2-filter-clear" onClick={() => { setFilterByLists(new Set()); setFilterByTags(new Set()); setFilterByStatus('all'); }}>
-                        Clear all filters
-                      </button>
-                    )}
-                  </>
-                ) : filterPanel === 'lists' ? (
-                  <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> My lists</button>
-                    {LISTS.map((list) => (
-                      <button
-                        key={list}
-                        className={'t2-menu-item t2-menu-item--check' + (filterByLists.has(list) ? ' t2-menu-item--on' : '')}
-                        role="menuitemcheckbox"
-                        aria-checked={filterByLists.has(list)}
-                        onClick={() => setFilterByLists((prev) => { const next = new Set(prev); next.has(list) ? next.delete(list) : next.add(list); return next; })}
-                      >
-                        <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByLists.has(list) ? ' t2-check-dot--on' : '')}>{filterByLists.has(list) && <Check size={10} />}</span>{list}</span>
-                      </button>
-                    ))}
-                  </>
-                ) : filterPanel === 'tags' ? (
-                  <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Tags</button>
-                    {allTags.length === 0 ? (
-                      <p className="t2-filter-empty">No tags yet. Add tags to tasks first.</p>
-                    ) : allTags.map((tag) => (
-                      <button
-                        key={tag}
-                        className={'t2-menu-item t2-menu-item--check' + (filterByTags.has(tag) ? ' t2-menu-item--on' : '')}
-                        role="menuitemcheckbox"
-                        aria-checked={filterByTags.has(tag)}
-                        onClick={() => setFilterByTags((prev) => { const next = new Set(prev); next.has(tag) ? next.delete(tag) : next.add(tag); return next; })}
-                      >
-                        <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByTags.has(tag) ? ' t2-check-dot--on' : '')}>{filterByTags.has(tag) && <Check size={10} />}</span>#{tag}</span>
-                      </button>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Status</button>
-                    {[['all', 'All tasks'], ['active', 'Active'], ['done', 'Completed']].map(([val, label]) => (
-                      <button
-                        key={val}
-                        className={'t2-menu-item t2-menu-item--check' + (filterByStatus === val ? ' t2-menu-item--on' : '')}
-                        role="menuitemradio"
-                        aria-checked={filterByStatus === val}
-                        onClick={() => setFilterByStatus(val)}
-                      >
-                        <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByStatus === val ? ' t2-check-dot--on' : '')}>{filterByStatus === val && <Check size={10} />}</span>{label}</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
+                  ))}
+                </>
+              ) : (
+                <>
+                  <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Status</button>
+                  {[['all', 'All tasks'], ['active', 'Active'], ['done', 'Completed']].map(([val, label]) => (
+                    <button
+                      key={val}
+                      className={'t2-menu-item t2-menu-item--check' + (filterByStatus === val ? ' t2-menu-item--on' : '')}
+                      role="menuitemradio"
+                      aria-checked={filterByStatus === val}
+                      onClick={() => setFilterByStatus(val)}
+                    >
+                      <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByStatus === val ? ' t2-check-dot--on' : '')}>{filterByStatus === val && <Check size={10} />}</span>{label}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
           </div>
           <div className="t2-menu-wrap" ref={menuRef}>
             <button
@@ -813,31 +810,29 @@ function TasksPage() {
             >
               <DotsThree size={16} />
             </button>
-            {menuOpen && (
-              <div className="t2-menu-pop" role="menu" aria-label="Task actions">
-                <button className="t2-menu-item" role="menuitem" onClick={cycleLayout}>
-                  <span className="t2-menu-item-left"><SquaresFour size={15} className="t2-menu-item-icon" /> Layout</span>
-                  <span className="t2-menu-meta">{layoutLabel}</span>
-                </button>
-                <button
-                  className={'t2-menu-item' + (multiSelect ? ' t2-menu-item--on' : '')}
-                  role="menuitem"
-                  onClick={() => {
-                    const next = !multiSelect;
-                    setMultiSelect(next);
-                    if (!next) clearSelectedIds();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="t2-menu-item-left"><Stack size={15} className="t2-menu-item-icon" /> Multi-select</span>
-                  <span className="t2-menu-meta">{multiSelect ? 'On' : 'Off'}</span>
-                </button>
-                <button className="t2-menu-item" role="menuitem" onClick={handlePrint}>
-                  <span className="t2-menu-item-left"><Printer size={15} className="t2-menu-item-icon" /> Print</span>
-                  <span className="t2-menu-meta">Visible tasks</span>
-                </button>
-              </div>
-            )}
+            <div className="t2-menu-pop" role="menu" aria-label="Task actions" hidden={!menuOpen}>
+              <button className="t2-menu-item" role="menuitem" onClick={cycleLayout}>
+                <span className="t2-menu-item-left"><SquaresFour size={15} className="t2-menu-item-icon" /> Layout</span>
+                <span className="t2-menu-meta">{layoutLabel}</span>
+              </button>
+              <button
+                className={'t2-menu-item' + (multiSelect ? ' t2-menu-item--on' : '')}
+                role="menuitem"
+                onClick={() => {
+                  const next = !multiSelect;
+                  setMultiSelect(next);
+                  if (!next) clearSelectedIds();
+                  setMenuOpen(false);
+                }}
+              >
+                <span className="t2-menu-item-left"><Stack size={15} className="t2-menu-item-icon" /> Multi-select</span>
+                <span className="t2-menu-meta">{multiSelect ? 'On' : 'Off'}</span>
+              </button>
+              <button className="t2-menu-item" role="menuitem" onClick={handlePrint}>
+                <span className="t2-menu-item-left"><Printer size={15} className="t2-menu-item-icon" /> Print</span>
+                <span className="t2-menu-meta">Visible tasks</span>
+              </button>
+            </div>
           </div>
         </div>
         <div className="t2-tools">
@@ -1050,19 +1045,17 @@ function TasksPage() {
                     >
                       <DotsThree size={16} />
                     </button>
-                    {subMenuOpen && (
-                      <div className="t2-menu-pop t2-submenu-pop" role="menu" aria-label="Subtask actions">
-                        <button className="t2-menu-item" role="menuitem" onClick={markAllSubtasksDone}>
-                          <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Mark all done</span>
-                        </button>
-                        <button className="t2-menu-item" role="menuitem" onClick={clearCompletedSubtasks}>
-                          <span className="t2-menu-item-left"><Check size={15} className="t2-menu-item-icon" /> Clear completed</span>
-                        </button>
-                        <button className="t2-menu-item t2-menu-item--danger" role="menuitem" onClick={deleteAllSubtasks}>
-                          <span className="t2-menu-item-left"><Trash size={15} className="t2-menu-item-icon" /> Delete all</span>
-                        </button>
-                      </div>
-                    )}
+                    <div className="t2-menu-pop t2-submenu-pop" role="menu" aria-label="Subtask actions" hidden={!subMenuOpen}>
+                      <button className="t2-menu-item" role="menuitem" onClick={markAllSubtasksDone}>
+                        <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Mark all done</span>
+                      </button>
+                      <button className="t2-menu-item" role="menuitem" onClick={clearCompletedSubtasks}>
+                        <span className="t2-menu-item-left"><Check size={15} className="t2-menu-item-icon" /> Clear completed</span>
+                      </button>
+                      <button className="t2-menu-item t2-menu-item--danger" role="menuitem" onClick={deleteAllSubtasks}>
+                        <span className="t2-menu-item-left"><Trash size={15} className="t2-menu-item-icon" /> Delete all</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="t2-subs">
