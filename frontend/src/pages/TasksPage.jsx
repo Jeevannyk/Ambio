@@ -421,22 +421,50 @@ function TasksPage() {
   // the one under the cursor gets selected live.
   const dragAnchorRef = useRef(null);
   const draggingRef = useRef(false);
+  // Pointer-down origin + "pressed but not dragging yet" state, so a plain
+  // click can't arm drag-select before the pointer has actually travelled.
+  const dragOriginRef = useRef(null);
+  const armedRef = useRef(false);
   const selectRange = (fromIdx, toIdx) => {
     const lo = Math.min(fromIdx, toIdx);
     const hi = Math.max(fromIdx, toIdx);
     const ids = visible.slice(lo, hi + 1).map((t) => t.id);
     setSelectedIds(new Set(ids));
   };
-  const startDragSelect = (idx) => {
-    draggingRef.current = true;
+  const startDragSelect = (e, idx) => {
+    // Capture keeps the drag alive once the pointer leaves the list or scroller.
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     dragAnchorRef.current = idx;
-    selectRange(idx, idx);
+    dragOriginRef.current = { x: e.clientX, y: e.clientY };
+    armedRef.current = false;
+    draggingRef.current = false;
+  };
+  const moveDragSelect = (e) => {
+    const origin = dragOriginRef.current;
+    if (!origin) return;
+    if (!armedRef.current) {
+      if (Math.hypot(e.clientX - origin.x, e.clientY - origin.y) <= 10) return;
+      armedRef.current = true;
+      draggingRef.current = true;
+      selectRange(dragAnchorRef.current, dragAnchorRef.current);
+    }
+    // Capture routes every move to the anchor row, so pointerenter never fires
+    // on the others — hit-test whichever row is under the cursor instead.
+    const row = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-tid]');
+    if (!row) return;
+    const idx = visible.findIndex((t) => t.id === row.dataset.tid);
+    if (idx >= 0) selectRange(dragAnchorRef.current, idx);
   };
   const dragOverRow = (idx) => {
     if (draggingRef.current && dragAnchorRef.current != null) selectRange(dragAnchorRef.current, idx);
   };
   useEffect(() => {
-    const end = () => { draggingRef.current = false; dragAnchorRef.current = null; };
+    const end = () => {
+      draggingRef.current = false;
+      dragAnchorRef.current = null;
+      dragOriginRef.current = null;
+      armedRef.current = false;
+    };
     window.addEventListener('pointerup', end);
     return () => window.removeEventListener('pointerup', end);
   }, []);
@@ -933,7 +961,8 @@ function TasksPage() {
                   data-tid={t.id}
                   className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '') + (removingIds.has(t.id) ? ' t2-row--removing' : '')}
                   style={multiSelect ? { touchAction: 'none' } : undefined}
-                  onPointerDown={() => { if (multiSelect) startDragSelect(i); }}
+                  onPointerDown={(e) => { if (multiSelect) startDragSelect(e, i); }}
+                  onPointerMove={(e) => { if (multiSelect) moveDragSelect(e); }}
                   onPointerEnter={() => dragOverRow(i)}
                 >
                   {multiSelect ? (
