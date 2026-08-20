@@ -2,7 +2,10 @@
 
 body {
   margin: 0;
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  /* Shorthand pins the base leading on body instead of leaning on Tailwind
+     preflight's html rule, so unstyled blocks can't fall back to the browser
+     default (~1.2). Resets weight/style to normal, which is what they were. */
+  font: 100%/1.5 'Outfit', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
