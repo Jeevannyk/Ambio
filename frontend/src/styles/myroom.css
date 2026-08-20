@@ -97,8 +97,8 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 600;
@@ -131,8 +131,8 @@
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--glass-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
   color: var(--text);
   font-size: 0.8rem;
   font-weight: 600;

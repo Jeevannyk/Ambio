@@ -114,8 +114,8 @@
   border-radius: 999px;
   background: var(--glass-bg);
   border: 1px solid var(--border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
   font-size: 0.72rem;
   color: var(--muted);
 }
@@ -136,8 +136,8 @@
   border-radius: 10px;
   background: var(--glass-bg);
   border: 1px solid var(--border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
   color: var(--text);
   font-size: 0.82rem;
   font-weight: 600;
@@ -170,8 +170,8 @@
   border-radius: 12px;
   background: var(--glass-bg);
   border: 1px solid var(--border);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
   animation: cardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
   transition: border-color 0.25s;
 }
@@ -280,8 +280,8 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.25rem 1.5rem;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: var(--mat-regular) saturate(140%);
+  backdrop-filter: var(--mat-regular) saturate(140%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
@@ -413,8 +413,8 @@
   background: var(--glass-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: var(--mat-regular) saturate(140%);
+  backdrop-filter: var(--mat-regular) saturate(140%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
   animation: cardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -700,8 +700,8 @@
   background: var(--glass-bg);
   border: 1px dashed var(--border);
   border-radius: 16px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
   animation: cardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

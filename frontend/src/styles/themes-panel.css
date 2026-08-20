@@ -21,8 +21,8 @@
   display: flex;
   flex-direction: column;
   background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: var(--mat-thick);
+  backdrop-filter: var(--mat-thick);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.25rem 1.25rem 0;
@@ -206,8 +206,9 @@
   height: 24px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(6px);
+  /* No backdrop blur: this sits inside the already-blurred panel, and stacked
+     translucent surfaces wreck legibility. Opacity carries the contrast. */
+  background: rgba(0, 0, 0, 0.55);
   color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
@@ -285,7 +286,6 @@
   position: static;
   background: transparent;
   border: none;
-  backdrop-filter: none;
   color: var(--muted);
 }
 

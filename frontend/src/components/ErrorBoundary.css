@@ -19,8 +19,8 @@
   border: 1px solid var(--border, #374151);
   border-radius: 16px;
   background: var(--glass-bg, rgba(15, 20, 35, 0.72));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
   text-align: left;
 }
 

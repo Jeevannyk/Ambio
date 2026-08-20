@@ -49,8 +49,8 @@
   border-radius: 8px;
   background: var(--glass-bg);
   border: 1px solid var(--layout-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
 }
 
 .t2-title {
@@ -314,8 +314,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
 }
 
 .t2-list-head {
@@ -488,8 +488,8 @@
   border-radius: 12px;
   padding: 1.5rem;
   overflow-y: auto;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
 }
 
 .t2-detail-head {
@@ -847,8 +847,8 @@
   display: flex;
   flex-direction: column;
   max-height: 100%;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
 }
 
 .t2-section-head {

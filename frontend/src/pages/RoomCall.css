@@ -211,8 +211,8 @@
   background: transparent;
   border: none;
   box-shadow: none;
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   /* Float over the video so the stage fills the whole height (bigger video).
      The video never resizes — only the bar fades on idle. */
   position: absolute;
@@ -275,8 +275,8 @@
   letter-spacing: 0.05em;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 .rc-status::before {
@@ -300,8 +300,8 @@
   background: rgba(251, 191, 36, 0.18);
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 .rc-timer {
@@ -312,8 +312,8 @@
   border: 1px solid rgba(59, 130, 246, 0.4);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 /* Host's timer doubles as a play/pause control. */
@@ -513,8 +513,8 @@
   display: flex;
   flex-direction: column;
   background: rgba(17, 20, 26, 0.55);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
 }
 
 .rc-panel-head {
@@ -691,8 +691,8 @@
   background: transparent;
   border: none;
   box-shadow: none;
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   flex-wrap: wrap;
   /* Float over the bottom of the video instead of taking layout space. */
   position: absolute;
@@ -826,8 +826,8 @@
   border-radius: 8px;
   padding: 3px;
   gap: 2px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 .rc-view-toggle button {
@@ -947,7 +947,7 @@
   font-weight: 600;
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--mat-thin);
   animation: toastIn 0.25s ease-out;
 }
 

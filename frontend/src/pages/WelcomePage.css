@@ -177,8 +177,8 @@ body[data-theme='dark'] .ambio-mesh-grid {
   cursor: pointer;
   overflow: hidden;
   color: var(--text);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
   transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s, box-shadow 0.2s;
 }
 
