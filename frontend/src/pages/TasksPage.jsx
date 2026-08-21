@@ -465,8 +465,17 @@ function TasksPage() {
       dragOriginRef.current = null;
       armedRef.current = false;
     };
+    // pointerup alone leaves the drag armed when the OS steals the pointer
+    // (palm rejection, Alt+Tab, a browser gesture) -- the refs would still be
+    // live the next time the cursor crossed a row.
     window.addEventListener('pointerup', end);
-    return () => window.removeEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    window.addEventListener('lostpointercapture', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+      window.removeEventListener('lostpointercapture', end);
+    };
   }, []);
 
   const update = (id, patch) => setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -993,7 +1002,10 @@ function TasksPage() {
                     type="button"
                     className="t2-row-text"
                     onClick={() => {
-                      if (!multiSelect) { setSelectedId(t.id); setDetailOpen(true); }
+                      // In multi-select the drag threshold means pointer-down no
+                      // longer selects, so the title has to carry the tap itself.
+                      if (multiSelect) toggleTaskSelection(t.id);
+                      else { setSelectedId(t.id); setDetailOpen(true); }
                     }}
                   >
                     <span className={'t2-row-title' + (t.done ? ' t2-row-title--done' : '')}>{t.text}</span>

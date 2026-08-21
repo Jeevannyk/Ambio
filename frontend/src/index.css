@@ -42,6 +42,10 @@ body {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
+    /* Collapse the delays too, or staggered entrances still play out in full:
+       a backwards fill holds the element hidden until its delay elapses. */
+    animation-delay: -1ms !important;
+    transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
   /* Keep the opacity change that carries meaning; drop the travel. */
