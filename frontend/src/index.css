@@ -15,6 +15,30 @@ body {
   outline-offset: 2px;
 }
 
+/* Dark-theme scrollbar everywhere -- the browser default is a bright system
+   scrollbar that reads as a UI bug against this app's near-black surfaces. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: padding-box;
+}
+
 /* ---- Shared press feedback. Hover doesn't exist on touch, so every
    interactive surface also confirms on pointer-down. ---- */
 .rail-item:active, .theme-card-thumb:active, .themes-tab:active,
