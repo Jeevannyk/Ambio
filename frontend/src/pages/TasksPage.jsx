@@ -9,6 +9,7 @@ import ReminderModal from '../components/tasks/ReminderModal';
 import MoveToModal from '../components/tasks/MoveToModal';
 import TagsModal from '../components/tasks/TagsModal';
 import { Calendar } from '@/components/ui/calendar';
+import { DEFAULT_REMINDER_TIME, nextRepeatDate } from '../lib/reminders';
 import './TasksPage.css';
 
 const STORAGE_KEY = 'react-todo-app.tasks';
@@ -36,12 +37,15 @@ const VIEW_BUCKETS = [
   { key: 'someday', title: 'Someday', subtitle: () => '' },
 ];
 
+const REPEAT_LABELS = { day: 'Daily', week: 'Weekly', month: 'Monthly' };
+
 const reminderLabel = (r) => {
   if (!r) return 'Remind me';
   if (r.someday) return 'Someday';
   const d = new Date(`${r.date}T00:00`);
   const md = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  return r.time ? `${md}, ${r.time}` : md;
+  const when = r.time ? `${md}, ${r.time}` : md;
+  return r.repeat ? `${when} · ${REPEAT_LABELS[r.repeat.unit]}` : when;
 };
 
 const toDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -79,49 +83,6 @@ function genBolt() {
 function uid() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-// Soft two-note "ding-dong" chime when a reminder fires — synthesized with the
-// Web Audio API so there's no audio file to ship. Sounds like a polished to-do app.
-let _audioCtx = null;
-function playReminderChime() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    _audioCtx = _audioCtx || new Ctx();
-    const ctx = _audioCtx;
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
-    // Two bell tones (C6 then G5) with a quick attack and gentle decay.
-    [[1046.5, 0], [783.99, 0.18]].forEach(([freq, delay]) => {
-      const t = now + delay;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.22, t + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.95);
-    });
-  } catch {
-    /* audio not available — fail silently */
-  }
-}
-
-// Parse a reminder's date + "9:00 AM" time into a real Date (local time).
-function reminderDueAt(reminder) {
-  if (!reminder || reminder.someday || !reminder.date) return null;
-  const base = new Date(`${reminder.date}T00:00`);
-  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec((reminder.time || '').trim());
-  if (m) {
-    let h = parseInt(m[1], 10) % 12;
-    if (m[3] && m[3].toUpperCase() === 'PM') h += 12;
-    base.setHours(h, parseInt(m[2], 10), 0, 0);
-  }
-  return base;
 }
 
 // Current + longest streak from a Set of 'YYYY-MM-DD' activity day-keys.
@@ -172,7 +133,7 @@ const bucketForTask = (task, now = today()) => {
   return 'upcoming';
 };
 
-function TasksPage() {
+function TasksPage({ reminders }) {
   const [tasks, setTasks] = useState(loadTasks);
   const [selectedId, setSelectedId] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false); // mobile: detail slide-over open
@@ -207,6 +168,8 @@ function TasksPage() {
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [removingIds, setRemovingIds] = useState(() => new Set()); // rows mid delete-animation
+  const [flashIds, setFlashIds] = useState(() => new Set()); // rows a reminder just fired on
+  const [todayKey, setTodayKey] = useState(() => toDateKey(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const calendarRef = useRef(null);
@@ -231,6 +194,37 @@ function TasksPage() {
   const viewRef = useRef(null);
   const filterRef = useRef(null);
   const posRef = useRef(new Map());
+  // The reminder picker scales out of its chip and returns focus there on close.
+  const reminderChipRef = useRef(null);
+  const [reminderOrigin, setReminderOrigin] = useState(null);
+  const [reminderSeq, setReminderSeq] = useState(0);
+
+  const flashRow = (id) => {
+    setFlashIds((prev) => new Set(prev).add(id));
+    setTimeout(() => setFlashIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    }), 2400);
+  };
+
+  const openReminder = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    reminderChipRef.current = e.currentTarget;
+    // The modal is centred, so 50% of its own box is the viewport centre —
+    // offsetting from there anchors the origin on the chip without measuring it.
+    setReminderOrigin({
+      x: rect.left + rect.width / 2 - window.innerWidth / 2,
+      y: rect.top + rect.height / 2 - window.innerHeight / 2,
+    });
+    setReminderSeq((n) => n + 1); // remount so the picker re-reads the task's reminder
+    setModal('reminder');
+  };
+
+  const closeReminder = () => {
+    setModal(null);
+    reminderChipRef.current?.focus();
+  };
 
   useEffect(() => {
     const onDocClick = (event) => {
@@ -250,6 +244,7 @@ function TasksPage() {
         setFilterOpen(false);
         setFilterPanel(null);
         setCalendarOpen(false);
+        setModal(null);
       }
     };
     document.addEventListener('pointerdown', onDocClick);
@@ -291,35 +286,22 @@ function TasksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Watch reminders and chime (+ notify) when one comes due. Each task fires once.
-  const firedReminders = useRef(new Set());
+  // A fired reminder flashes its row, so a muted user still gets a signal.
   useEffect(() => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {});
-    }
-    const check = () => {
-      const now = Date.now();
-      tasks.forEach((t) => {
-        if (t.done) return;
-        const due = reminderDueAt(t.reminder);
-        if (!due) return;
-        const key = `${t.id}|${t.reminder.date}|${t.reminder.time}`;
-        if (firedReminders.current.has(key)) return;
-        // Fire if due within the last 2 minutes (not for long-past reminders on load).
-        const delta = now - due.getTime();
-        if (delta >= 0 && delta < 120000) {
-          firedReminders.current.add(key);
-          playReminderChime();
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            try { new Notification('Reminder', { body: t.text }); } catch {}
-          }
-        }
-      });
-    };
-    check();
-    const id = setInterval(check, 20000);
-    return () => clearInterval(id);
-  }, [tasks]);
+    const ids = Object.keys(reminders?.firedAt || {});
+    if (!ids.length) return;
+    ids.forEach(flashRow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reminders?.firedAt]);
+
+  // Buckets key off today's date — bump it at midnight so a tab left open
+  // overnight doesn't keep filing new tasks under yesterday.
+  useEffect(() => {
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 5);
+    const id = setTimeout(() => setTodayKey(toDateKey(new Date())), midnight.getTime() - Date.now());
+    return () => clearTimeout(id);
+  }, [todayKey]);
 
   // First visit of a new day: if a streak is alive, celebrate it once.
   useEffect(() => {
@@ -496,9 +478,9 @@ function TasksPage() {
     if (!text) return;
     const task = { id: uid(), text, done: false, list: 'Personal', notes: '', subtasks: [], tags: [], reminder: null, attachments: [] };
     const base = today();
-    if (bucket === 'tomorrow') task.reminder = { date: toDateKey(offsetDays(base, 1)), time: '9:00 AM' };
-    if (bucket === 'upcoming') task.reminder = { date: toDateKey(offsetDays(base, 3)), time: '9:00 AM' };
-    if (bucket === 'someday') task.reminder = { someday: true, time: '9:00 AM' };
+    if (bucket === 'tomorrow') task.reminder = { date: toDateKey(offsetDays(base, 1)), time: DEFAULT_REMINDER_TIME };
+    if (bucket === 'upcoming') task.reminder = { date: toDateKey(offsetDays(base, 3)), time: DEFAULT_REMINDER_TIME };
+    if (bucket === 'someday') task.reminder = { someday: true };
     setTasks((prev) => [...prev, task]);
     setSelectedId(task.id);
     updateBoardDraft(bucket, '');
@@ -507,6 +489,14 @@ function TasksPage() {
   const toggleTask = (id) => {
     const t = tasks.find((x) => x.id === id);
     if (t && !t.done) markActiveToday(); // completing one keeps today's streak
+    // A repeating task never stays done — it rolls forward from today instead,
+    // same row, same id. The row flash is the confirmation that it moved.
+    if (t && !t.done && t.reminder?.repeat && t.reminder.date) {
+      update(id, { reminder: { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) } });
+      reminders?.clearFired(id);
+      flashRow(id);
+      return;
+    }
     setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
   };
   // Play the dissolve animation first, then drop the task once it finishes.
@@ -530,7 +520,19 @@ function TasksPage() {
   const markSelectedDone = () => {
     if (!selectedTaskIds.length) return;
     markActiveToday();
-    setTasks((prev) => prev.map((t) => (selectedIds.has(t.id) ? { ...t, done: true } : t)));
+    // Mirror toggleTask's repeat handling: a repeating task rolls forward
+    // instead of completing, even when it's done through the bulk action.
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (!selectedIds.has(t.id) || t.done) return t;
+        if (t.reminder?.repeat && t.reminder.date) {
+          reminders?.clearFired(t.id);
+          flashRow(t.id);
+          return { ...t, reminder: { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) } };
+        }
+        return { ...t, done: true };
+      })
+    );
   };
   const cycleLayout = () => {
     setMenuOpen(false);
@@ -636,7 +638,7 @@ function TasksPage() {
       buckets[bucketForTask(task, now)].push(task);
     });
     return buckets;
-  }, [visible]);
+  }, [visible, todayKey]);
 
   const renderTaskRow = (task, { compact = false } = {}) => (
     <div
@@ -647,7 +649,8 @@ function TasksPage() {
         (compact ? ' t2-row--compact' : '') +
         (task.id === selectedId ? ' t2-row--active' : '') +
         (multiSelect && selectedIds.has(task.id) ? ' t2-row--selected' : '') +
-        (removingIds.has(task.id) ? ' t2-row--removing' : '')
+        (removingIds.has(task.id) ? ' t2-row--removing' : '') +
+        (flashIds.has(task.id) ? ' t2-row--flash' : '')
       }
     >
       {multiSelect ? (
@@ -968,7 +971,7 @@ function TasksPage() {
                 <div
                   key={t.id}
                   data-tid={t.id}
-                  className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '') + (removingIds.has(t.id) ? ' t2-row--removing' : '')}
+                  className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '') + (removingIds.has(t.id) ? ' t2-row--removing' : '') + (flashIds.has(t.id) ? ' t2-row--flash' : '')}
                   style={multiSelect ? { touchAction: 'none' } : undefined}
                   onPointerDown={(e) => { if (multiSelect) startDragSelect(e, i); }}
                   onPointerMove={(e) => { if (multiSelect) moveDragSelect(e); }}
@@ -1048,7 +1051,7 @@ function TasksPage() {
                 <input className="t2-detail-title" value={selected.text} onChange={(e) => update(selected.id, { text: e.target.value })} placeholder="Task name" />
 
                 <div className="t2-chips">
-                  <button className="t2-chip" onClick={() => setModal('reminder')}>
+                  <button className="t2-chip" onClick={openReminder}>
                     <Bell size={15} className="t2-chip-i t2-chip-i--red" /> {reminderLabel(selected.reminder)}
                   </button>
                   <button className="t2-chip" onClick={() => setModal('move')}>
@@ -1182,13 +1185,18 @@ function TasksPage() {
         </div>
       )}
 
-      {selected && modal === 'reminder' && (
+      {/* Stays mounted while closed so it can transition out — see .rm-overlay. */}
+      {selected && (
         <ReminderModal
+          key={reminderSeq}
+          open={modal === 'reminder'}
           initial={selected.reminder}
-          onCancel={() => setModal(null)}
+          origin={reminderOrigin}
+          sound={reminders}
+          onCancel={closeReminder}
           onSet={(r) => {
             update(selected.id, { reminder: r });
-            setModal(null);
+            closeReminder();
           }}
         />
       )}

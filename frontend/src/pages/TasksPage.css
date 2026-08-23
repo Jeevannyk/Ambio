@@ -432,11 +432,29 @@
   }
 }
 
+/* A fired (or rescheduled) reminder pulses its row — the visual half of the
+   chime, so a muted user still gets the signal. */
+.t2-row--flash {
+  animation: t2RowFlash 2.2s ease-out;
+}
+
+@keyframes t2RowFlash {
+  0%, 60% { background: var(--brand-soft); border-color: rgba(245, 197, 24, 0.45); }
+  30% { background: rgba(245, 197, 24, 0.28); border-color: var(--brand); }
+  100% { background: transparent; border-color: transparent; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .t2-row--removing {
     -webkit-mask-image: none;
     mask-image: none;
     animation-duration: 0.01s;
+  }
+  /* Degrade the pulse to a plain highlight rather than a flash. */
+  .t2-row--flash {
+    animation: none;
+    background: var(--brand-soft);
+    border-color: rgba(245, 197, 24, 0.45);
   }
 }
 
@@ -1494,10 +1512,26 @@
   inset: 0;
   z-index: 500;
   background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Enter and exit along the same path. `allow-discrete` lets the overlay keep
+     animating while `display` flips, so closing isn't an instant vanish. */
+  transition: opacity 0.22s var(--ios-ease), display 0.22s allow-discrete;
+}
+
+@starting-style {
+  .rm-overlay { opacity: 0; }
+}
+
+/* `display: none` is restated because the transition needs the discrete
+   display change to animate. */
+.rm-overlay[hidden] {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .rm-modal {
@@ -1509,10 +1543,24 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Scale out of the chip that opened it: the modal is centred, so 50% of its
+     own box is the viewport centre and --rm-ox/oy offset from there. */
+  transform-origin: calc(50% + var(--rm-ox, 0px)) calc(50% + var(--rm-oy, 0px));
+  transition: opacity 0.22s var(--ios-ease), transform 0.22s var(--ios-ease);
 }
 
-.rm-modal--lg { width: 480px; }
+@starting-style {
+  .rm-modal { opacity: 0; transform: scale(0.9); }
+}
+
+.rm-overlay[hidden] .rm-modal { opacity: 0; transform: scale(0.9); }
+
 .rm-modal--sm { width: 300px; }
+
+/* With the calendar expanded the picker can outgrow a short viewport, so the
+   body scrolls instead of the modal spilling past both edges. */
+.rm-modal--rem { width: 360px; max-height: calc(100vh - 2rem); }
+.rm-modal--rem .rm-body { min-height: 0; overflow-y: auto; }
 
 .rm-head {
   padding: 0.75rem 1rem;
@@ -1528,20 +1576,61 @@
   padding: 1rem;
 }
 
-.rm-fields {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+/* The one line that answers "what am I about to set". */
+.rm-summary {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
-.rm-field {
-  flex: 1;
+.rm-summary-b {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--layout-border);
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.rm-summary-b:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.rm-summary-rep { font-weight: 600; color: var(--text); }
+
+.rm-quick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.rm-pill {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: var(--border);
+  border: 1px solid transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }
 
-.rm-field span {
+.rm-pill:hover { background: var(--layout-border); }
+.rm-pill--on { border-color: var(--accent); background: var(--brand-soft); }
+.rm-pill-t { font-size: 0.85rem; font-weight: 600; }
+.rm-pill-s { font-size: 0.72rem; color: var(--muted); }
+
+.rm-time {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.rm-time > span {
   font-size: 0.7rem;
   text-transform: uppercase;
   color: var(--muted);
@@ -1549,7 +1638,8 @@
   letter-spacing: 0.05em;
 }
 
-.rm-field input {
+.rm-time input {
+  width: 6.5rem;
   background: var(--border);
   border: 1px solid transparent;
   border-radius: 4px;
@@ -1559,13 +1649,53 @@
   outline: none;
 }
 
-.rm-cal-wrap {
+.rm-time input[aria-invalid='true'] { border-color: var(--danger); }
+.rm-time-err { font-size: 0.72rem; color: var(--danger); font-style: normal; }
+
+/* Collapsed rows — the calendar and repeat are escape hatches, not the centre. */
+.rm-disc {
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.15rem;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--layout-border);
+  color: var(--muted);
+  font-size: 0.82rem;
+  cursor: pointer;
 }
 
-.rm-cal {
+.rm-disc:hover { color: var(--text); }
+.rm-disc-l { font-weight: 500; }
+.rm-disc-v { margin-left: auto; color: var(--text); font-weight: 600; }
+.rm-disc-c { transition: transform 0.2s var(--ios-ease); }
+.rm-disc-c--open { transform: rotate(90deg); }
+
+.rm-repeat {
+  display: flex;
+  gap: 0.35rem;
+  padding-bottom: 0.5rem;
+}
+
+.rm-rep {
   flex: 1;
+  padding: 0.35rem 0.2rem;
+  border-radius: 6px;
+  background: var(--border);
+  border: 1px solid transparent;
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.rm-rep:hover { background: var(--layout-border); }
+.rm-rep--on { border-color: var(--accent); background: var(--brand-soft); font-weight: 600; }
+.rm-repeat-note { margin: 0 0 0.5rem; font-size: 0.72rem; color: var(--muted); }
+
+.rm-cal {
+  padding-bottom: 0.5rem;
 }
 
 .rm-cal-head {
@@ -1633,40 +1763,21 @@
   opacity: 0.4;
 }
 
+/* Past days can't be picked — muted enough to read as unavailable. */
+.rm-day:disabled {
+  opacity: 0.25;
+  cursor: default;
+  background: transparent;
+}
+
+.rm-day--today {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 .rm-day--sel {
   background: var(--accent) !important;
   color: #fff !important;
   font-weight: 600;
-}
-
-.rm-quick {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  width: 100px;
-  justify-content: center;
-}
-
-.rm-quick button {
-  background: var(--border);
-  border: 1px solid transparent;
-  padding: 0.35rem;
-  font-size: 0.78rem;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--text);
-  text-align: left;
-}
-
-.rm-quick button:hover {
-  background: var(--layout-border);
-}
-
-.rm-quick-rec {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  opacity: 0.7;
 }
 
 .rm-foot {
@@ -1675,6 +1786,47 @@
   display: flex;
   gap: 0.5rem;
 }
+
+.rm-foot--split .rm-cancel, .rm-foot--split .rm-set { flex: 0 0 auto; padding-inline: 1.1rem; }
+.rm-foot-sp { flex: 1; }
+
+.rm-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.6rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.rm-remove:hover { background: rgba(248, 113, 113, 0.12); }
+
+.rm-sound {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem 0.75rem;
+  border-top: 1px solid var(--layout-border);
+}
+
+.rm-sound-b {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.rm-sound-b:hover { background: var(--border); color: var(--text); }
 
 .rm-foot-div {
   width: 1px;
@@ -1701,6 +1853,11 @@
 .rm-set {
   background: var(--accent);
   color: #fff;
+}
+
+.rm-set:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .mv-body {
@@ -1790,19 +1947,8 @@
     left: 0;
     padding: 0.5rem;
   }
-  .rm-modal--lg {
+  .rm-modal--rem {
     width: calc(100vw - 2rem);
-  }
-  .rm-cal-wrap {
-    flex-direction: column;
-  }
-  .rm-quick {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .rm-quick button {
-    flex: 1 1 calc(50% - 0.5rem);
   }
 }
 
