@@ -43,7 +43,8 @@ body {
    interactive surface also confirms on pointer-down. ---- */
 .rail-item:active, .theme-card-thumb:active, .themes-tab:active,
 .t2-menu-item:active, .theme-card-fav:active, .pomo-expand-chip:active,
-.rm-day:active, .rm-pill:active, .rm-rep:active, .rm-set:active, .rm-cancel:active {
+.rm-day:active, .rm-pill:active, .rm-rep:active, .rm-set:active, .rm-cancel:active,
+.tg-row:active {
   transform: scale(0.97);
   transition: transform 100ms ease-out;
 }

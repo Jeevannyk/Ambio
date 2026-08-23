@@ -10,9 +10,11 @@ import MoveToModal from '../components/tasks/MoveToModal';
 import TagsModal from '../components/tasks/TagsModal';
 import { Calendar } from '@/components/ui/calendar';
 import { DEFAULT_REMINDER_TIME, nextRepeatDate } from '../lib/reminders';
+import { DEFAULT_TAGS, mergeTags } from '../lib/tags';
 import './TasksPage.css';
 
 const STORAGE_KEY = 'react-todo-app.tasks';
+const TAGS_KEY = 'react-todo-app.tags';
 const LAYOUT_KEY = 'react-todo-app.tasks.layout';
 const VIEW_KEY = 'react-todo-app.tasks.view';
 const STREAK_KEY = 'react-todo-app.streak';
@@ -47,6 +49,10 @@ const reminderLabel = (r) => {
   const when = r.time ? `${md}, ${r.time}` : md;
   return r.repeat ? `${when} · ${REPEAT_LABELS[r.repeat.unit]}` : when;
 };
+
+// Two names fit on the chip; past that they'd truncate, so fall back to a count.
+const tagsLabel = (tags) =>
+  (!tags?.length ? 'Tags' : tags.length <= 2 ? tags.join(', ') : `Tags · ${tags.length}`);
 
 const toDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -116,6 +122,17 @@ function loadTasks() {
   }
 }
 
+// The tags a user has coined, kept apart from the tasks so one survives being
+// removed from the last task carrying it.
+function loadTagVocab() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TAGS_KEY) || 'null');
+    return Array.isArray(saved) ? saved : DEFAULT_TAGS;
+  } catch {
+    return DEFAULT_TAGS;
+  }
+}
+
 const taskDate = (task) => {
   if (task.reminder?.someday) return null;
   if (task.reminder?.date) return new Date(`${task.reminder.date}T00:00`);
@@ -135,6 +152,7 @@ const bucketForTask = (task, now = today()) => {
 
 function TasksPage({ reminders }) {
   const [tasks, setTasks] = useState(loadTasks);
+  const [tagVocab, setTagVocab] = useState(loadTagVocab);
   const [selectedId, setSelectedId] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false); // mobile: detail slide-over open
   const [search, setSearch] = useState('');
@@ -198,6 +216,10 @@ function TasksPage({ reminders }) {
   const reminderChipRef = useRef(null);
   const [reminderOrigin, setReminderOrigin] = useState(null);
   const [reminderSeq, setReminderSeq] = useState(0);
+  // The tag picker opens out of its own chip the same way.
+  const tagsChipRef = useRef(null);
+  const [tagsOrigin, setTagsOrigin] = useState(null);
+  const [tagsSeq, setTagsSeq] = useState(0);
 
   const flashRow = (id) => {
     setFlashIds((prev) => new Set(prev).add(id));
@@ -224,6 +246,22 @@ function TasksPage({ reminders }) {
   const closeReminder = () => {
     setModal(null);
     reminderChipRef.current?.focus();
+  };
+
+  const openTags = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    tagsChipRef.current = e.currentTarget;
+    setTagsOrigin({
+      x: rect.left + rect.width / 2 - window.innerWidth / 2,
+      y: rect.top + rect.height / 2 - window.innerHeight / 2,
+    });
+    setTagsSeq((n) => n + 1); // remount so the picker re-reads the task's tags
+    setModal('tags');
+  };
+
+  const closeTags = () => {
+    setModal(null);
+    tagsChipRef.current?.focus();
   };
 
   useEffect(() => {
@@ -262,6 +300,10 @@ function TasksPage({ reminders }) {
       setAttachError('Storage full — remove some attachments to save changes.');
     }
   }, [tasks]);
+
+  useEffect(() => {
+    localStorage.setItem(TAGS_KEY, JSON.stringify(tagVocab));
+  }, [tagVocab]);
 
   useEffect(() => {
     localStorage.setItem(LAYOUT_KEY, layoutMode);
@@ -351,6 +393,9 @@ function TasksPage({ reminders }) {
     tasks.forEach((t) => (t.tags || []).forEach((tag) => set.add(tag)));
     return [...set].sort();
   }, [tasks]);
+
+  // What the picker offers: coined tags plus anything already in use.
+  const pickerTags = useMemo(() => mergeTags(tagVocab, allTags), [tagVocab, allTags]);
 
   const activeFilterCount = (filterByLists.size > 0 ? 1 : 0) + (filterByTags.size > 0 ? 1 : 0) + (filterByStatus !== 'all' ? 1 : 0);
 
@@ -1057,9 +1102,9 @@ function TasksPage({ reminders }) {
                   <button className="t2-chip" onClick={() => setModal('move')}>
                     <FileText size={15} className="t2-chip-i t2-chip-i--amber" /> {selected.list}
                   </button>
-                  <button className="t2-chip" onClick={() => setModal('tags')}>
+                  <button className="t2-chip" onClick={openTags}>
                     <Hash size={15} className="t2-chip-i t2-chip-i--blue" />
-                    {selected.tags?.length ? `Tags · ${selected.tags.length}` : 'Tags'}
+                    {tagsLabel(selected.tags)}
                   </button>
                 </div>
 
@@ -1211,13 +1256,18 @@ function TasksPage({ reminders }) {
           }}
         />
       )}
-      {selected && modal === 'tags' && (
+      {selected && (
         <TagsModal
+          key={tagsSeq}
+          open={modal === 'tags'}
+          tags={pickerTags}
           selected={selected.tags}
-          onCancel={() => setModal(null)}
+          origin={tagsOrigin}
+          onCreate={(name) => setTagVocab((prev) => [...prev, name])}
+          onCancel={closeTags}
           onSave={(tags) => {
             update(selected.id, { tags });
-            setModal(null);
+            closeTags();
           }}
         />
       )}

@@ -1942,6 +1942,44 @@
   color: var(--text);
 }
 
+/* The only place a tag's colour shows: a hue hashed from its own name, so
+   there's nothing to pick and nothing to store. */
+.tg-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: hsl(var(--tg-h) 68% 58%);
+}
+
+.tg-row--on { background: hsl(var(--tg-h) 45% 20% / 0.35); }
+.tg-row--on:hover { background: hsl(var(--tg-h) 45% 26% / 0.45); }
+
+/* A typed name that already existed merges into its row — the flash is what
+   makes that visible instead of silent. */
+.tg-row--flash { animation: tg-flash 600ms var(--ios-ease); }
+
+@keyframes tg-flash {
+  from { background: hsl(var(--tg-h) 62% 46% / 0.5); }
+  to { background: hsl(var(--tg-h) 45% 20% / 0.35); }
+}
+
+/* Coining a tag is a row in the list, not a mode. Sticky so it stays reachable
+   once the list outgrows .tg-body. */
+.tg-new {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--surface); /* opaque, or rows scroll through it */
+  color: var(--muted);
+}
+
+.tg-new:focus-within { color: var(--accent); }
+.tg-new input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text); font: inherit; font-size: 0.85rem; }
+
 @media (max-width: 900px) {
   .tasks2 {
     left: 0;
