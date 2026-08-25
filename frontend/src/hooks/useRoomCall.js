@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Room, RoomEvent, Track, DisconnectReason } from 'livekit-client';
+import {
+  Room, RoomEvent, Track, DisconnectReason, ConnectionQuality,
+  VideoPresets, ScreenSharePresets,
+} from 'livekit-client';
 import { supabase } from '../lib/supabase';
 
 /*
@@ -73,7 +76,8 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
   const [errorDetail, setErrorDetail] = useState(''); // server/SDK message for the error screens
   const [mediaError, setMediaError] = useState(null); // 'mic' | 'cam' | 'both' — non-fatal
   const [isHost, setIsHost] = useState(false);
-  const [localStream, setLocalStream] = useState(null);
+  const [localVideoTrack, setLocalVideoTrack] = useState(null); // LocalVideoTrack | null
+  const [connectionQuality, setConnectionQuality] = useState(ConnectionQuality.Unknown);
   const [micOn, setMicOn] = useState(initMic);
   const [camOn, setCamOn] = useState(initCam);
   const [sharing, setSharing] = useState(false);
@@ -92,8 +96,6 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
   const handRaisedRef = useRef(false);
   const maxRef = useRef(max);
   const handsRef = useRef(new Map()); // identity -> hand raised
-  const streamCache = useRef(new Map()); // identity -> reused MediaStream
-  const localMsRef = useRef(new MediaStream());
 
   /* ---- data message send helpers ---- */
   const publish = useCallback((msg, identities) => {
@@ -108,18 +110,29 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
   /* ---- bootstrap ---- */
   useEffect(() => {
     let cancelled = false;
-    const room = new Room({ adaptiveStream: true, dynacast: true });
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+      // Uncapped SDK defaults publish 720p30 camera (~2.3 Mbps with simulcast)
+      // and 1080p15 screen share. This is a study room of small tiles on
+      // whatever connection people happen to have — 540p is already more than
+      // the biggest tile (the speaker-view stage) shows, and the extra 360/180
+      // layers are what adaptiveStream picks from for the small ones.
+      videoCaptureDefaults: { resolution: VideoPresets.h540.resolution },
+      publishDefaults: {
+        videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
+        screenShareEncoding: ScreenSharePresets.h720fps15.encoding,
+      },
+    });
     roomRef.current = room;
     maxRef.current = max;
 
-    // Build (and cache, to avoid <video> flicker) a MediaStream for a remote
-    // participant: prefer their screen share over camera, plus their mic.
-    const streamFor = (p) => {
-      let ms = streamCache.current.get(p.identity);
-      if (!ms) {
-        ms = new MediaStream();
-        streamCache.current.set(p.identity, ms);
-      }
+    // The LiveKit track objects for a remote participant: prefer their screen
+    // share over their camera, plus their mic. Handed to VideoTile as-is —
+    // adaptiveStream and dynacast only see a tile once track.attach() has run,
+    // so assembling a MediaStream here and setting .srcObject (as this used to)
+    // left every remote track permanently "invisible" to the SFU.
+    const tracksFor = (p) => {
       const pubs = [...p.trackPublications.values()];
       const screen = pubs.find((x) => x.source === Track.Source.ScreenShare && x.track);
       const cam = pubs.find((x) => x.source === Track.Source.Camera && x.track);
@@ -135,7 +148,7 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
       const list = [...room.remoteParticipants.values()].map((p) => ({
         id: p.identity,
         name: p.name || 'Connecting…',
-        stream: streamFor(p),
+        ...tracksFor(p),
         micOn: p.isMicrophoneEnabled,
         camOn: p.isCameraEnabled,
         hand: handsRef.current.get(p.identity) || false,
@@ -144,16 +157,10 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
     };
 
     const rebuildLocal = () => {
-      const lp = room.localParticipant;
-      const pubs = [...lp.trackPublications.values()];
-      const screen = pubs.find((x) => x.source === Track.Source.ScreenShare && x.track?.mediaStreamTrack);
-      const cam = pubs.find((x) => x.source === Track.Source.Camera && x.track?.mediaStreamTrack);
-      const v = (screen || cam)?.track?.mediaStreamTrack;
-      const ms = localMsRef.current;
-      const want = v ? [v] : [];
-      ms.getTracks().forEach((t) => { if (!want.includes(t)) ms.removeTrack(t); });
-      want.forEach((t) => { if (!ms.getTracks().includes(t)) ms.addTrack(t); });
-      setLocalStream(ms);
+      const pubs = [...room.localParticipant.trackPublications.values()];
+      const screen = pubs.find((x) => x.source === Track.Source.ScreenShare && x.track);
+      const cam = pubs.find((x) => x.source === Track.Source.Camera && x.track);
+      setLocalVideoTrack((screen || cam)?.track || null);
     };
 
     // Earliest joiner is the host; recompute on every roster change so host
@@ -221,7 +228,6 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
     room
       .on(RoomEvent.ParticipantConnected, () => { recomputeHost(); syncParticipants(); })
       .on(RoomEvent.ParticipantDisconnected, (p) => {
-        streamCache.current.delete(p.identity);
         handsRef.current.delete(p.identity);
         recomputeHost();
         syncParticipants();
@@ -239,6 +245,21 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
         let msg;
         try { msg = JSON.parse(decoder.decode(payload)); } catch { return; }
         handleData(participant?.identity, msg);
+      })
+      // A network stall used to leave the header reading "Live" while the video
+      // froze — indistinguishable from a broken app. Say what's happening.
+      .on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+        if (participant === room.localParticipant) setConnectionQuality(quality);
+      })
+      .on(RoomEvent.Reconnecting, () => {
+        if (!cancelled) setStatus((s) => (s === 'live' ? 'reconnecting' : s));
+      })
+      .on(RoomEvent.Reconnected, () => {
+        if (!cancelled) setStatus((s) => (s === 'reconnecting' ? 'live' : s));
+        // Publications are re-created on the far side, so the track objects the
+        // tiles hold may be stale.
+        syncParticipants();
+        rebuildLocal();
       })
       .on(RoomEvent.Disconnected, (reason) => {
         if (cancelled) return;
@@ -313,7 +334,6 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
 
     return () => {
       cancelled = true;
-      streamCache.current.clear();
       handsRef.current.clear();
       room.disconnect();
     };
@@ -424,7 +444,8 @@ export function useRoomCall(roomId, pass, displayName, max = Infinity, initial =
     mediaError,
     isHost,
     isAdmin: isHost,
-    localStream,
+    localVideoTrack,
+    connectionQuality,
     micOn,
     camOn,
     sharing,

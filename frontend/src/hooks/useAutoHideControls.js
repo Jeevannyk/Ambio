@@ -9,10 +9,17 @@ import { useState, useEffect, useRef, useCallback } from 'react';
  * setState when visibility actually flips — moving the mouse never triggers a
  * re-render on its own, just a cheap timer reset.
  *
+ * Touch devices opt out entirely. A hidden bar is pointer-events: none, so the
+ * tap meant to bring it back can't reach it — it falls through to the video
+ * tile underneath, which pins that tile and jumps to Speaker view. Hiding only
+ * works when a pointer can hover the bar back into view first.
+ *
  * Returns:
  *   visible   — boolean, whether controls should be shown
  *   bindHover — spread onto each bar to pin it open while hovered
  */
+const canHover = () => window.matchMedia?.('(hover: hover)').matches ?? true;
+
 export function useAutoHideControls(timeout = 3000) {
   const [visible, setVisible] = useState(true);
   const visibleRef = useRef(true);
@@ -29,6 +36,7 @@ export function useAutoHideControls(timeout = 3000) {
   const scheduleHide = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (hoveringRef.current) return; // never hide while a bar is hovered
+    if (!canHover()) return; // touch: a hidden bar can't be tapped back open
     timerRef.current = setTimeout(() => setVis(false), timeout);
   }, [timeout, setVis]);
 

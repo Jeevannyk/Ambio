@@ -445,7 +445,9 @@
 /* ── Cards grid ──────────────────────────────────────── */
 .rooms-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* min() so the track can go under 300px: the container leaves ~295px at a
+     375px viewport, and a hard 300px floor overflowed the page sideways. */
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 1.1rem;
 }
 
@@ -585,10 +587,19 @@
   transition: color 0.2s, background 0.2s, opacity 0.25s, transform 0.25s;
 }
 
-.room-card:hover .card-delete-btn,
-.card-delete-btn:focus-visible {
-  opacity: 1;
-  transform: translateY(0);
+/* Reveal-on-hover only where hover exists. On touch it left an invisible but
+   fully tappable "Terminate Room" trigger sitting in the card header. */
+@media (hover: hover) and (pointer: fine) {
+  .card-delete-btn {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  .room-card:hover .card-delete-btn,
+  .card-delete-btn:focus-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card-delete-btn:hover {
@@ -826,6 +837,31 @@
   }
   .quickjoin-label {
     display: none;
+  }
+
+  /* Card actions sit at 34px — under the ~44px a fingertip needs. */
+  .code-copy-btn,
+  .code-regen-btn,
+  .join-action-btn,
+  .card-delete-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Every lift on this page sticks after a tap on touch — there is no pointer to
+   move away. The :active rules above are the press feedback that replaces them.
+   (Same treatment as .rail-item in styles/responsive.css.) */
+@media (hover: none) {
+  .room-card:hover,
+  .room-card:hover .card-badge-icon,
+  .rooms-admin-toggle:hover,
+  .quickjoin-btn:hover:not(:disabled),
+  .quickjoin-btn:hover:not(:disabled) svg,
+  .rooms-submit-btn:hover,
+  .code-copy-btn:hover,
+  .join-action-btn:hover {
+    transform: none;
   }
 }
 

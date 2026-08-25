@@ -2,15 +2,37 @@ import React, { useRef, useEffect } from 'react';
 import { MicrophoneSlash, Hand, Screencast } from '@phosphor-icons/react';
 
 /*
- * One participant cell. Attaches the MediaStream to a <video>; shows an
- * avatar fallback when the camera is off. Local tile is muted + mirrored.
+ * One participant cell. Shows an avatar fallback when the camera is off. Local
+ * tile is muted + mirrored.
+ *
+ * Media goes on through LiveKit's own attach()/detach(), never by assigning
+ * .srcObject: attach() is what registers this <video> with the track, and with
+ * adaptiveStream on, a track with no registered element is treated as invisible
+ * and gets paused at the SFU. attach() merges into whatever the element already
+ * holds, so the same <video> carries the video and the audio track.
+ *
+ * Track object identity is stable per publication, so these effects only re-run
+ * on a real track change (camera <-> screen share, resubscribe), not per render.
  */
-function VideoTile({ stream, name, micOn, camOn, hand, speaking, isLocal, sharing, spotlight, thumb, onClick }) {
+function VideoTile({ videoTrack, audioTrack, name, micOn, camOn, hand, speaking, isLocal, sharing, spotlight, thumb, onClick }) {
   const ref = useRef(null);
 
   useEffect(() => {
-    if (ref.current && stream) ref.current.srcObject = stream;
-  }, [stream]);
+    const el = ref.current;
+    if (!el || !videoTrack) return;
+    videoTrack.attach(el);
+    return () => videoTrack.detach(el);
+  }, [videoTrack]);
+
+  // The local tile never attaches its own mic (audioTrack is only passed for
+  // remotes) — attach() unmutes the element for any stream carrying audio,
+  // which on your own tile is a feedback loop.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !audioTrack) return;
+    audioTrack.attach(el);
+    return () => audioTrack.detach(el);
+  }, [audioTrack]);
 
   const initial = (name || '?').trim().charAt(0).toUpperCase();
 

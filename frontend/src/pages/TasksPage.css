@@ -1890,6 +1890,40 @@
   .rm-modal--rem {
     width: calc(100vw - 2rem);
   }
+
+  /* The list pane below is already fluid; the topbar was the part that broke.
+     Its two groups are ~677px of content against ~359px at a 375px viewport,
+     with nothing letting them wrap or shrink. Stack them and let each scroll. */
+  .tasks2-topbar {
+    flex-wrap: wrap;
+  }
+
+  .t2-leftbar, .t2-tools {
+    min-width: 0;
+    flex: 1 1 100%;
+    overflow-x: auto;
+  }
+
+  /* Fingertip minimum. The task checkboxes are deliberately left alone: they
+     sit inside rows that are themselves the tap target, so a 44px box there
+     would swallow taps meant for the row. */
+  .t2-tool,
+  .t2-icon-btn,
+  .t2-add-send,
+  .t2-submenu-btn,
+  .t2-cal-inner .rdp-button_previous,
+  .t2-cal-inner .rdp-button_next {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* The page heading is the one piece of the left group that carries no action —
+   drop it before making people scroll the toolbar sideways for the menus. */
+@media (max-width: 600px) {
+  .t2-title strong {
+    display: none;
+  }
 }
 
 /* ── Patches: gaps in the Gemini redesign (ported from previous sheet) ── */
@@ -1948,10 +1982,11 @@
   .tasks2-board { grid-template-columns: 1fr; }
 }
 
-/* The nav rail is a bottom bar at this width (see styles/responsive.css):
-   clear its height instead of its old left edge. */
-@media (max-width: 600px) {
-  .tasks2 { bottom: var(--rail-h, 0px); }
+/* The nav rail is a bottom bar at this size (see styles/responsive.css): clear
+   its height instead of its old left edge. Must stay in lockstep with that
+   file's trigger, or this fixed pane runs under the bar. */
+@media (max-width: 900px), (max-height: 500px) {
+  .tasks2 { left: 0; bottom: var(--rail-h, 0px); }
   .t2-support-pop {
     left: 1rem;
     right: 1rem;

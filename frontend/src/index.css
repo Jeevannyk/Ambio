@@ -44,9 +44,21 @@ body {
 .rail-item:active, .theme-card-thumb:active, .themes-tab:active,
 .t2-menu-item:active, .theme-card-fav:active, .pomo-expand-chip:active,
 .rm-day:active, .rm-pill:active, .rm-rep:active, .rm-set:active, .rm-cancel:active,
-.tg-row:active {
+.tg-row:active,
+.rc-ctrl:active, .rc-strip-item:active, .rc-view-toggle button:active,
+.rc-grid .vtile:active {
   transform: scale(0.97);
   transition: transform 100ms ease-out;
+}
+
+/* ---- iOS Safari zooms in on any field under 16px and never zooms back out.
+   On the fixed-position pages (.rc, .tasks2) there is nothing to scroll, so the
+   user is simply stuck. !important because every one of these fields is styled
+   by a class selector, which outranks a bare `input` rule no matter the order. */
+@media (max-width: 900px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
 /* ---- Reduced transparency: drop the glass for an opaque surface.

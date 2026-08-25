@@ -11,8 +11,11 @@
 
 /* ── Mobile ──────────────────────────────────────────────────────── */
 /* The rail stops being a left column and becomes a bottom bar, so everything
-   that used to clear its left edge now clears its height (--rail-h) instead. */
-@media (max-width: 600px) {
+   that used to clear its left edge now clears its height (--rail-h) instead.
+   The height clause catches landscape phones (typically 667-932px wide, under
+   430px tall): the vertical 8-item rail needs ~460px and would eat most of the
+   screen — which is the orientation people hold a phone in for a video call. */
+@media (max-width: 900px), (max-height: 500px) {
   :root {
     --rail-h: calc(64px + env(safe-area-inset-bottom, 0px));
   }
