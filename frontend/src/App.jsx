@@ -20,6 +20,8 @@ import './styles/todo-card.css';
 import './styles/themes-panel.css';
 import './styles/background.css';
 import './styles/overlays.css';
+import './styles/modal.css';
+import './styles/toast.css';
 import './styles/myroom.css';
 import './styles/pomodoro.css';
 import './styles/responsive.css';
