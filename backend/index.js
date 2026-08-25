@@ -43,7 +43,22 @@ const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } })
   : null;
 
+// A missing or typo'd Supabase config makes requireUser() fall through to its
+// { id: 'dev' } bypass, i.e. /api/token hands a real, signed LiveKit token to
+// any anonymous caller. That bypass is deliberate for local dev (it's what lets
+// `npm run server` work with no .env at all) and indefensible in a deployment,
+// so a deployed instance refuses to boot rather than degrade silently.
+//
+// RENDER is set automatically on every Render service, so it holds even if
+// someone drops an env var; NODE_ENV is set explicitly in render.yaml as a
+// second, independent signal. Either one is enough.
+const IS_DEPLOYED = !!process.env.RENDER || process.env.NODE_ENV === 'production';
+
 if (!supabase) {
+  if (IS_DEPLOYED) {
+    console.error('[ambio] FATAL: Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Refusing to start — without it /api/token would mint a LiveKit token for any unauthenticated caller.');
+    process.exit(1);
+  }
   console.warn('[ambio] Supabase not configured — /api/token will NOT require auth. Set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY to lock it down.');
 }
 

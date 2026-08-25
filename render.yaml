@@ -14,6 +14,12 @@ services:
     buildCommand: npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend
     startCommand: node backend/index.js
     envVars:
+      # Tells backend/index.js it's a real deployment, so it refuses to boot
+      # without Supabase instead of falling back to the dev auth bypass. Render
+      # also sets RENDER=true automatically; the server accepts either signal,
+      # so dropping one of them can't quietly re-open the bypass.
+      - key: NODE_ENV
+        value: production
       # Server-side (LiveKit token minting) — never shipped to the browser.
       - key: LIVEKIT_API_KEY
         sync: false
