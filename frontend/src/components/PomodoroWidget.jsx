@@ -6,11 +6,14 @@ import { isAuthRoute } from '../lib/auth';
 
 function PomodoroWidget({ pomodoro }) {
   const location = useLocation();
+  // Hooks must run unconditionally on every render, so the route guard sits
+  // below both of them — otherwise the hook count differs between routes and
+  // React desyncs its per-render hook bookkeeping (Rules of Hooks).
+  const [expanded, setExpanded] = useState(false);
   const path = location.pathname;
   if (path === '/my-room' || path === '/tasks' || isAuthRoute(path) || /^\/rooms\/.+/.test(path)) return null;
 
   const { mode, secondsLeft, running, round, setMode, toggle, reset } = pomodoro;
-  const [expanded, setExpanded] = useState(false);
 
   const total = POMODORO_MODES[mode].seconds;
   const pct = Math.max(0, Math.min(100, ((total - secondsLeft) / total) * 100));
