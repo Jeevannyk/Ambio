@@ -925,7 +925,8 @@
   font-size: 0.62rem;
 }
 
-/* Join / leave toasts */
+/* Join / leave toasts — the pill itself is in styles/toast.css (shared with
+   the Rooms page); this is just where they stack. */
 .rc-toasts {
   position: absolute;
   top: 1rem;
@@ -937,23 +938,6 @@
   align-items: center;
   pointer-events: none;
   z-index: 5;
-}
-
-.rc-toast {
-  background: rgba(17, 20, 26, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.4rem 0.85rem;
-  border-radius: 999px;
-  backdrop-filter: var(--mat-thin);
-  animation: toastIn 0.25s ease-out;
-}
-
-@keyframes toastIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Leave confirmation popover */

@@ -8,7 +8,6 @@ import {
 import { useRoomCall } from '../hooks/useRoomCall';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
 import { formatTime } from '../hooks/usePomodoro';
-import { supabase } from '../lib/supabase';
 import VideoTile from '../components/room/VideoTile';
 import PreJoin from '../components/room/PreJoin';
 import CodeGate from '../components/room/CodeGate';
@@ -48,10 +47,11 @@ function RoomCall({ pomodoro }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  // Rooms live in Supabase. The Rooms page hands the row over via router state;
-  // invite links and refreshes fall back to fetching it here.
-  const [room, setRoom] = useState(location.state?.room ?? null);
-  const [roomState, setRoomState] = useState(location.state?.room ? 'ready' : 'loading'); // loading | ready | missing | error
+  const [room, setRoom] = useState(null); // { id, name, max }
+  const [pass, setPass] = useState(null); // { token, url } — held, unused, until the gate opens
+  // loading | ready | missing | auth-error | token-error
+  const [roomState, setRoomState] = useState('loading');
+  const [passDetail, setPassDetail] = useState(''); // server message for the error screen
   // Auto-pass the gate only if they JUST typed the code on the Rooms page
   // (so the invite-code flow doesn't ask them to type it twice).
   const [verified, setVerified] = useState(
@@ -59,23 +59,30 @@ function RoomCall({ pomodoro }) {
   );
   const [session, setSession] = useState(null); // { name, micOn, camOn } | null
 
+  // /api/token is the only authenticated lookup for a room now: it returns the
+  // join pass AND the room's name/capacity. Reading the rooms table from here
+  // instead would come back empty for everyone but the room's creator, leaving
+  // the code gate with no room name to show (0002_rooms_owner.sql).
+  //
+  // The pass is fetched before the gate but only used after it — the token has
+  // a 2h TTL, so sitting on the gate screen can't expire it in practice.
   useEffect(() => {
-    if (roomState !== 'loading') return;
-    if (!supabase) { setRoomState('error'); return; }
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select('id, name, max')
-        .eq('id', id)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error) setRoomState('error');
-      else if (!data) setRoomState('missing');
-      else { setRoom(data); setRoomState('ready'); }
+      try {
+        const data = await fetchRoomPass(id);
+        if (cancelled) return;
+        setRoom({ id, name: data.name || id, max: data.max });
+        setPass({ token: data.token, url: data.url });
+        setRoomState('ready');
+      } catch (err) {
+        if (cancelled) return;
+        setPassDetail(err?.message || '');
+        setRoomState(err?.status === 404 ? 'missing' : err?.status === 401 ? 'auth-error' : 'token-error');
+      }
     })();
     return () => { cancelled = true; };
-  }, [id, roomState]);
+  }, [id]);
 
   if (roomState === 'loading') {
     return (
@@ -86,14 +93,16 @@ function RoomCall({ pomodoro }) {
   }
 
   if (roomState !== 'ready') {
+    const fatal = ERROR_COPY[roomState]; // 'missing' has its own copy below
     return (
       <div className="rc-error">
-        <h2>{roomState === 'missing' ? 'Room not found' : 'Rooms unavailable'}</h2>
+        <h2>{fatal ? fatal.title : 'Room not found'}</h2>
         <p>
-          {roomState === 'missing'
-            ? 'That code doesn’t match any room. Double-check it with the host.'
-            : 'Could not load this room. Check your connection and try again.'}
+          {fatal
+            ? fatal.body
+            : 'That code doesn’t match any room. Double-check it with the host.'}
         </p>
+        {fatal && passDetail && <p>({passDetail})</p>}
         <button className="rc-leave-btn" onClick={() => navigate('/rooms')}>Back to Rooms</button>
       </div>
     );
@@ -124,6 +133,7 @@ function RoomCall({ pomodoro }) {
     <RoomLive
       id={id}
       info={room}
+      pass={pass}
       pomodoro={pomodoro}
       displayName={session.name}
       initial={{
@@ -138,7 +148,7 @@ function RoomCall({ pomodoro }) {
 
 function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const navigate = useNavigate();
-  const call = useRoomCall(id, displayName, info.max ?? Infinity, initial);
+  const call = useRoomCall(id, pass, displayName, info.max ?? Infinity, initial);
   const [panel, setPanel] = useState(null); // 'chat' | 'people' | null
   const [chatText, setChatText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -252,7 +262,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
       micOn: p.micOn,
       camOn: p.camOn,
       hand: p.hand,
-      sharing: false,
+      sharing: p.sharing,
       isLocal: false,
       speaking: call.speakingIds.includes(p.id),
     })),
@@ -324,9 +334,12 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
         </div>
 
         <div className="rc-view-toggle">
+          {/* Clicking a face in Gallery pins it and switches to Speaker, so
+              coming back here drops the pin — otherwise the next trip to
+              Speaker view silently opens on a stale, hand-picked tile. */}
           <button
             className={viewMode === 'gallery' ? 'active' : ''}
-            onClick={() => setViewMode('gallery')}
+            onClick={() => { setPinnedId(null); setViewMode('gallery'); }}
             title="Gallery view"
           >
             <SquaresFour size={14} /> Gallery

@@ -346,6 +346,52 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+/* Two panels rather than a switch, so each option can carry its consequence in
+   plain words instead of hiding it behind a label. */
+.visibility-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.visibility-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.15rem 0.45rem;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.visibility-option:hover {
+  border-color: var(--accent);
+}
+
+.visibility-option.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+}
+
+.visibility-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.visibility-hint {
+  grid-column: 2;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
 .panel-footer {
   display: flex;
   align-items: center;
@@ -514,11 +560,19 @@
 }
 
 .card-badge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* Private is the default and stays quiet; public is the one worth spotting. */
+.card-badge-label--public {
+  color: var(--accent);
 }
 
 .card-delete-btn {
@@ -528,8 +582,6 @@
   cursor: pointer;
   padding: 0.4rem;
   border-radius: 8px;
-  opacity: 0;
-  transform: translateY(-3px);
   transition: color 0.2s, background 0.2s, opacity 0.25s, transform 0.25s;
 }
 
@@ -603,10 +655,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* `flex-end`, not `space-between`, because a non-creator's card has Connect and
+   nothing else — it would otherwise sit alone at the far left. The creator's
+   card is unaffected: .code-regen-btn's auto margin absorbs the free space, and
+   justify-content has no say once it does. */
 .card-bottom {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
   margin-top: auto;
   padding-top: 0.9rem;
@@ -662,6 +718,29 @@
 
 .copied-check {
   color: #10b981;
+}
+
+/* Sits with the code it replaces; `margin-right: auto` eats the free space so
+   the pair stays left and Connect stays right. */
+.code-regen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: auto;
+  padding: 0.4rem;
+  min-height: 34px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.code-regen-btn:hover {
+  color: var(--accent);
+  border-color: var(--border);
+  background: var(--surface);
 }
 
 .join-action-btn {
@@ -737,7 +816,8 @@
     align-items: flex-start;
     flex-direction: column;
   }
-  .panel-grid {
+  .panel-grid,
+  .visibility-choice {
     grid-template-columns: 1fr;
   }
   .panel-footer {
@@ -787,4 +867,42 @@
 @keyframes skShimmer {
   from { background-position: 200% 0; }
   to   { background-position: -200% 0; }
+}
+
+/* ── Confirm dialog + toasts ───────────────────────────── */
+/* The shell is the shared .rm-* modal (styles/modal.css); this is just its
+   one line of copy. */
+.rooms-confirm-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.rooms-confirm-text strong {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+/* The page's own error style already carries a bottom margin for the creator
+   panel; inside the modal body the padding covers it. */
+.rm-body .rooms-panel-error {
+  margin-bottom: 0;
+  margin-top: 0.75rem;
+}
+
+/* Pinned to the viewport, not the page: this list scrolls. */
+.rooms-toasts {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  pointer-events: none;
+  z-index: 600;
 }

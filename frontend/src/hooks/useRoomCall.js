@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabase';
  * Real-time room over LiveKit (managed SFU — reliable signaling + TURN baked
  * in, unlike the old PeerJS public-broker mesh). The browser fetches a short-
  * lived join token from our own /api/token endpoint (the LiveKit secret never
- * ships to the client), then connects to the LiveKit server.
+ * ships to the client) via fetchRoomPass() below, then hands it to this hook,
+ * which connects to the LiveKit server.
  *
  * Media (camera / mic / screen share) flows through LiveKit's tracks. Everything
  * else rides LiveKit data messages (JSON, {t: type, ...}) — same schema as before:
@@ -22,8 +23,9 @@ import { supabase } from '../lib/supabase';
  * by /api/kick (LiveKit admin API) so it doesn't depend on the target's client
  * playing along.
  *
- * The public API (return value) is identical to the old PeerJS hook, so the
- * room UI, VideoTile, and PreJoin all work unchanged.
+ * Media is handed out as LiveKit Track objects (not MediaStreams): VideoTile
+ * calls track.attach(), which is what feeds adaptiveStream/dynacast the tile's
+ * visibility and size so the SFU can pick a layer for it.
  */
 
 const TOKEN_ENDPOINT = import.meta.env.VITE_TOKEN_ENDPOINT || '/api/token';
@@ -39,10 +41,34 @@ async function authHeaders() {
   return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
 }
 
-export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
+/*
+ * Ask the server for a join pass. Returns { token, url, name, max } — the room's
+ * name and capacity ride along because the rooms table is only readable by the
+ * room's creator now (supabase/migrations/0002_rooms_owner.sql), so the browser
+ * can't look them up itself. RoomCall calls this on mount, before the code gate,
+ * and holds the token until the gate opens; nothing here connects anything.
+ * Throws on failure, with .status carrying the HTTP code.
+ */
+export async function fetchRoomPass(roomId) {
+  const resp = await fetch(`${TOKEN_ENDPOINT}?room=${encodeURIComponent(roomId)}`, {
+    headers: await authHeaders(),
+  });
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => null);
+    const err = new Error(body?.error || `HTTP ${resp.status}`);
+    err.status = resp.status;
+    throw err;
+  }
+  const data = await resp.json();
+  if (!data?.url || !data?.token) throw new Error('the server returned an incomplete join pass');
+  return data;
+}
+
+export function useRoomCall(roomId, pass, displayName, max = Infinity, initial = {}) {
   const initMic = initial.micOn ?? true;
   const initCam = initial.camOn ?? true;
-  // connecting | live | ended | full | replaced | auth-error | token-error | connect-error
+  // connecting | live | reconnecting | ended | full | replaced | connect-error
+  // (auth/token failures happen in fetchRoomPass, before this hook mounts)
   const [status, setStatus] = useState('connecting');
   const [errorDetail, setErrorDetail] = useState(''); // server/SDK message for the error screens
   const [mediaError, setMediaError] = useState(null); // 'mic' | 'cam' | 'both' — non-fatal
@@ -53,7 +79,8 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
   const [sharing, setSharing] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const [speakingIds, setSpeakingIds] = useState([]); // includes 'me'
-  const [participants, setParticipants] = useState([]); // {id, name, stream, micOn, camOn, hand}
+  // {id, name, videoTrack, audioTrack, sharing, micOn, camOn, hand}
+  const [participants, setParticipants] = useState([]);
   const [messages, setMessages] = useState([]);
   const [reactions, setReactions] = useState([]); // {key, emoji}
   const [remotePomodoro, setRemotePomodoro] = useState(null);
@@ -94,17 +121,14 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
         streamCache.current.set(p.identity, ms);
       }
       const pubs = [...p.trackPublications.values()];
-      const screen = pubs.find((x) => x.source === Track.Source.ScreenShare && x.track?.mediaStreamTrack);
-      const cam = pubs.find((x) => x.source === Track.Source.Camera && x.track?.mediaStreamTrack);
-      const mic = pubs.find((x) => x.source === Track.Source.Microphone && x.track?.mediaStreamTrack);
-      const want = [];
-      const v = (screen || cam)?.track?.mediaStreamTrack;
-      const a = mic?.track?.mediaStreamTrack;
-      if (v) want.push(v);
-      if (a) want.push(a);
-      ms.getTracks().forEach((t) => { if (!want.includes(t)) ms.removeTrack(t); });
-      want.forEach((t) => { if (!ms.getTracks().includes(t)) ms.addTrack(t); });
-      return ms;
+      const screen = pubs.find((x) => x.source === Track.Source.ScreenShare && x.track);
+      const cam = pubs.find((x) => x.source === Track.Source.Camera && x.track);
+      const mic = pubs.find((x) => x.source === Track.Source.Microphone && x.track);
+      return {
+        videoTrack: (screen || cam)?.track || null,
+        audioTrack: mic?.track || null,
+        sharing: !!screen,
+      };
     };
 
     const syncParticipants = () => {
@@ -232,26 +256,11 @@ export function useRoomCall(roomId, displayName, max = Infinity, initial = {}) {
     };
 
     async function start() {
-      let url, token;
+      // The pass was minted before the code gate (identity + display name are
+      // assigned server-side from our session); this is the first moment we
+      // actually use it.
       try {
-        // identity + display name are assigned server-side from our session.
-        const resp = await fetch(`${TOKEN_ENDPOINT}?room=${encodeURIComponent(roomId)}`, {
-          headers: await authHeaders(),
-        });
-        if (!resp.ok) {
-          const body = await resp.json().catch(() => null);
-          fail(resp.status === 401 ? 'auth-error' : 'token-error', body?.error || `HTTP ${resp.status}`);
-          return;
-        }
-        ({ url, token } = await resp.json());
-        if (!url || !token) throw new Error('the server returned an incomplete join pass');
-      } catch (err) {
-        fail('token-error', err?.message);
-        return;
-      }
-
-      try {
-        await room.connect(url, token);
+        await room.connect(pass.url, pass.token);
       } catch (err) {
         fail('connect-error', err?.message);
         return;
