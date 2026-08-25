@@ -577,6 +577,12 @@
   color: var(--accent);
 }
 
+/* Full borrows the same label so it reads as part of that line, not a second
+   badge system — it's just the one state that should stop you short. */
+.card-badge-label--full {
+  color: var(--danger);
+}
+
 .card-delete-btn {
   background: transparent;
   border: none;
@@ -649,6 +655,14 @@
   background: color-mix(in srgb, var(--accent) 55%, transparent);
   animation: seatPulse 3s ease-in-out infinite;
   animation-delay: calc(var(--d, 0) * 0.35s);
+}
+
+/* A taken seat is solid with a halo; an open one keeps the translucent fill
+   above. Same pulse and same --d delay either way, so the row still breathes as
+   one row — only the fill says who's actually in there. */
+.seat-dot--taken {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 @keyframes seatPulse {
@@ -778,6 +792,22 @@
 
 .join-action-btn:active {
   transform: scale(0.96);
+}
+
+/* A full room de-emphasises Connect rather than disabling it — the count can be
+   stale, so this is a warning, and the real capacity check happens on connect.
+   Still fully clickable, and it lights back up on hover to say so. */
+.join-action-btn.is-full {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.join-action-btn.is-full:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: none;
 }
 
 /* ── Empty state ─────────────────────────────────────── */

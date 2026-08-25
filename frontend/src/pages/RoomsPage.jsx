@@ -8,6 +8,40 @@ import { supabase } from '../lib/supabase';
 import { useScrollReveal } from '../hooks/useScrollReveal';
 import './RoomsPage.css';
 
+// Same base as the token endpoint, one path over. Derived here rather than
+// imported from useRoomCall.js, which owns the twin of this helper: that module
+// pulls in the whole livekit-client bundle, and browsing the rooms list has no
+// business downloading it.
+const OCCUPANCY_ENDPOINT = (import.meta.env.VITE_TOKEN_ENDPOINT || '/api/token')
+  .replace(/\/token$/, '/rooms/occupancy');
+
+/*
+ * Live participant counts for the given room ids — { [roomId]: count }, with a
+ * room nobody is in left out entirely (LiveKit only knows about rooms that
+ * exist, so absent means zero). The browser can't read this itself: the count
+ * comes from LiveKit's admin API, which needs the secret, so it goes through
+ * our own server — same reason /api/kick exists.
+ *
+ * Returns null, not {}, on any failure, so a caller can tell "nobody is in
+ * these rooms" apart from "we don't know" and show capacity alone in the second
+ * case. This is a hint on a card, never a gate, so it swallows its errors.
+ */
+async function fetchOccupancy(ids) {
+  if (!ids.length) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data?.session?.access_token;
+    const resp = await fetch(`${OCCUPANCY_ENDPOINT}?ids=${encodeURIComponent(ids.join(','))}`, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    });
+    if (!resp.ok) return null;
+    const counts = await resp.json();
+    return counts && typeof counts === 'object' ? counts : null;
+  } catch {
+    return null;
+  }
+}
+
 function genCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let out = '';
@@ -69,6 +103,9 @@ function RoomsPage() {
   const navigate = useNavigate();
   const { isAdmin: admin } = useAuth();
   const [rooms, setRooms] = useState([]);
+  // {id: live participant count} once we've heard back, null while we haven't —
+  // a card shows capacity alone until then. See the effect below.
+  const [occupancy, setOccupancy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -112,6 +149,28 @@ function RoomsPage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // How many people are actually in each of those rooms right now, so a card
+  // reads "3 / 6 seats" instead of just "6 seats" and a full room is obvious
+  // before anyone tries the door. It's a separate round trip because only the
+  // server can ask LiveKit (fetchOccupancy), and it stays in its own state
+  // rather than being merged into `rooms` — that array mirrors the table.
+  //
+  // Fetched once per list, deliberately not polled: this is a hint on a card,
+  // not a live meter, and every card re-reads it on the next visit. Keyed on a
+  // joined id string so it re-runs when the list really changes (create, delete,
+  // regenerate) and not on every render.
+  const roomIds = rooms.map((r) => r.id).join(',');
+  useEffect(() => {
+    if (!roomIds) return;
+    let cancelled = false;
+    // null back means the fetch failed; leave whatever we had, so a blip
+    // doesn't wipe counts that were on screen a second ago.
+    fetchOccupancy(roomIds.split(',')).then((counts) => {
+      if (!cancelled && counts) setOccupancy(counts);
+    });
+    return () => { cancelled = true; };
+  }, [roomIds]);
 
   const createRoom = async (e) => {
     e.preventDefault();
@@ -389,7 +448,12 @@ function RoomsPage() {
         </div>
       ) : (
         <div className="rooms-grid">
-          {rooms.map((room, index) => (
+          {rooms.map((room, index) => {
+            // null until the counts land (or if they never do) — every seat
+            // readout below falls back to capacity alone in that case.
+            const taken = occupancy ? occupancy[room.id] || 0 : null;
+            const full = taken !== null && taken >= room.max;
+            return (
             <article
               key={room.id}
               className="room-card"
@@ -409,6 +473,15 @@ function RoomsPage() {
                     {room.is_public ? <Globe size={12} weight="bold" /> : <Lock size={12} weight="bold" />}
                     {room.is_public ? 'Public' : 'Private'}
                   </span>
+                  {/* Sits beside it on the same line for the same reason: a
+                      room you'd only be bounced out of is worth knowing about
+                      before you click, not after. */}
+                  {full && (
+                    <span className="card-badge-label card-badge-label--full">
+                      <Users size={12} weight="bold" />
+                      Full
+                    </span>
+                  )}
                 </div>
                 {admin && (
                   <button
@@ -429,11 +502,15 @@ function RoomsPage() {
               <div className="card-seats">
                 <span className="seat-dots" aria-hidden="true">
                   {Array.from({ length: room.max }).map((_, i) => (
-                    <span key={i} className="seat-dot" style={{ '--d': i }} />
+                    <span
+                      key={i}
+                      className={`seat-dot${taken !== null && i < taken ? ' seat-dot--taken' : ''}`}
+                      style={{ '--d': i }}
+                    />
                   ))}
                 </span>
                 <span className="seat-count">
-                  <Users size={12} /> {room.max} seats
+                  <Users size={12} /> {taken !== null ? `${taken} / ${room.max}` : room.max} seats
                 </span>
               </div>
 
@@ -469,13 +546,22 @@ function RoomsPage() {
                   </button>
                 )}
 
-                <button className="join-action-btn" onClick={() => enterRoom(room)}>
+                {/* Dimmed when full, never disabled: this count is a snapshot
+                    that can be seconds stale, and LiveKit's own check at
+                    connect time is the authority (useRoomCall's capacity
+                    bounce). Same spirit as CodeGate — a courtesy, not a gate. */}
+                <button
+                  className={`join-action-btn${full ? ' is-full' : ''}`}
+                  onClick={() => enterRoom(room)}
+                  title={full ? 'Looks full right now — you may be turned away' : undefined}
+                >
                   <SignIn size={14} />
                   <span>Connect</span>
                 </button>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
 

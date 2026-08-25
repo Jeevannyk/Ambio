@@ -3,10 +3,11 @@
  *
  * LiveKit access tokens are JWTs signed with your API secret, so they MUST be
  * minted on a server — never in the browser (the secret can't ship to clients).
- * This tiny Express app does three jobs:
+ * This tiny Express app does four jobs:
  *   1. GET  /api/token -> mints a join token for a room + returns the LiveKit URL
  *   2. POST /api/kick  -> host-only, authoritative removal of a participant
- *   3. serves the built Vite frontend (dist/) so it's a single Render service
+ *   3. GET  /api/rooms/occupancy -> live participant counts for named rooms
+ *   4. serves the built Vite frontend (dist/) so it's a single Render service
  *
  * The API endpoints are protected: the caller must present a valid Supabase
  * session (Authorization: Bearer <access_token>) and is rate-limited per IP, so
@@ -268,6 +269,59 @@ app.post('/api/kick', express.json({ limit: '1kb' }), async (req, res) => {
     }
     await roomService.removeParticipant(String(found.id), target);
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// One Rooms page shows a handful of cards, so this is far past what an honest
+// caller needs — it's here so nobody can hand us a thousand ids in one request.
+const MAX_OCCUPANCY_IDS = 24;
+
+// Live participant counts, so the Rooms list can say "3 / 6 seats" and flag a
+// full room before someone walks into it. Only a server can read this: the
+// count comes from LiveKit's admin API, which needs the secret — the same
+// reason /api/kick exists instead of a direct client call.
+//
+// Scoped to exactly the ids the caller names; it deliberately never dumps every
+// active room. That's the same line findRoom() draws — a signed-in caller
+// naming ids is fine, a caller fishing for what exists is not — and in practice
+// you only have ids your own Rooms list already handed you.
+//
+// No Supabase here, so ROOM_LOOKUP_READY doesn't apply: an id that isn't a real
+// room just comes back with no count, which is what an empty room looks like
+// anyway.
+app.get('/api/rooms/occupancy', async (req, res) => {
+  if (!roomService) {
+    return res.status(500).json({ error: 'LiveKit env not configured (LIVEKIT_API_KEY / LIVEKIT_API_SECRET / LIVEKIT_URL)' });
+  }
+
+  const ids = clean(req.query.ids, 1024)
+    .split(',')
+    .map((id) => clean(id, 64))
+    .filter(Boolean)
+    .slice(0, MAX_OCCUPANCY_IDS);
+  if (!ids.length) {
+    return res.status(400).json({ error: 'ids query param is required' });
+  }
+
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  if (rateLimited(ip)) {
+    return res.status(429).json({ error: 'too many requests, slow down' });
+  }
+
+  const user = await requireUser(req, res);
+  if (!user) return; // 401 already sent
+
+  try {
+    // listRooms(names) filters server-side and returns one Room per *live*
+    // room, carrying numParticipants. A room nobody is in doesn't exist on
+    // LiveKit at all, so it simply won't come back — the response only holds
+    // rooms with someone in them, and a missing key means zero.
+    const live = await roomService.listRooms(ids);
+    const counts = {};
+    for (const r of live) counts[r.name] = Number(r.numParticipants) || 0;
+    res.json(counts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
