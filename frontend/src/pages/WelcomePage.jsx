@@ -210,7 +210,9 @@ function WelcomePage() {
       {/* ── Engineering Signature Module ── */}
       <footer className="ambio-signature-deck reveal">
         <div className="signature-card">
-          <div className="avatar-wrapper" data-fallback="J" />
+          <div className="avatar-wrapper" data-fallback="J">
+            <img src="/jeevan.webp" alt="Jeevan" width="52" height="52" loading="lazy" />
+          </div>
           <div className="signature-details">
             <div className="signature-headline">
               <h4>Built by Jeevan</h4>
