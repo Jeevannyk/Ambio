@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlass, Heart, Sparkle, Check } from '@phosphor-icons/react';
+import { useCloudPref } from '../hooks/useCloudPref';
 
 const FAV_KEY = 'react-todo-app.favoriteThemes';
 
@@ -19,6 +20,7 @@ function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
   useEffect(() => {
     localStorage.setItem(FAV_KEY, JSON.stringify(favs));
   }, [favs]);
+  useCloudPref('themes.favorites', favs, setFavs);
 
   const toggleFav = (id) =>
     setFavs((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));

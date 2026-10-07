@@ -11,6 +11,17 @@ import TagsModal from '../components/tasks/TagsModal';
 import { Calendar } from '@/components/ui/calendar';
 import { DEFAULT_REMINDER_TIME, nextRepeatDate } from '../lib/reminders';
 import { DEFAULT_TAGS, mergeTags } from '../lib/tags';
+import { useAuth } from '../lib/AuthContext';
+import { useCloudPref } from '../hooks/useCloudPref';
+import {
+  fetchUserTasks,
+  createTaskInDb,
+  updateTaskInDb,
+  deleteTaskFromDb,
+  deleteTasksFromDb,
+  migrateLocalTasksToDb,
+  subscribeToUserTasks,
+} from '../lib/tasksApi';
 import './TasksPage.css';
 
 const STORAGE_KEY = 'react-todo-app.tasks';
@@ -151,6 +162,7 @@ const bucketForTask = (task, now = today()) => {
 };
 
 function TasksPage({ reminders }) {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState(loadTasks);
   const [tagVocab, setTagVocab] = useState(loadTagVocab);
   const [selectedId, setSelectedId] = useState(null);
@@ -293,6 +305,59 @@ function TasksPage({ reminders }) {
     };
   }, []);
 
+  // Sync tasks with Supabase when logged in + listen for real-time changes across devices
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+
+    async function syncWithSupabase() {
+      const remoteTasks = await fetchUserTasks(user.id);
+      if (!active) return;
+      if (remoteTasks && remoteTasks.length > 0) {
+        const formatted = remoteTasks.map((t) => ({
+          list: 'Personal',
+          notes: '',
+          subtasks: [],
+          tags: [],
+          reminder: null,
+          attachments: [],
+          ...t,
+        }));
+        setTasks(formatted);
+      } else {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        const local = saved ? JSON.parse(saved) : [];
+        if (local.length > 0) {
+          await migrateLocalTasksToDb(user.id, local);
+        }
+      }
+    }
+
+    syncWithSupabase();
+
+    const unsubscribe = subscribeToUserTasks(user.id, () => {
+      fetchUserTasks(user.id).then((remoteTasks) => {
+        if (remoteTasks && active) {
+          const formatted = remoteTasks.map((t) => ({
+            list: 'Personal',
+            notes: '',
+            subtasks: [],
+            tags: [],
+            reminder: null,
+            attachments: [],
+            ...t,
+          }));
+          setTasks(formatted);
+        }
+      });
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [user?.id]);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
@@ -312,6 +377,20 @@ function TasksPage({ reminders }) {
   useEffect(() => {
     localStorage.setItem(STREAK_KEY, JSON.stringify([...activity]));
   }, [activity]);
+
+  // Follow the account across devices. Streak days only ever accumulate, so
+  // those merge as a union; everything else takes the latest remote copy.
+  const activityList = useMemo(() => [...activity].sort(), [activity]);
+  useCloudPref('tasks.tags', tagVocab, setTagVocab);
+  useCloudPref('tasks.layout', layoutMode, setLayoutMode);
+  useCloudPref('tasks.streak', activityList, (days) => setActivity(new Set(days)), (local, remote) =>
+    [...new Set([...local, ...remote])].sort()
+  );
+  const viewPrefs = useMemo(() => ({ sortMode, showDetails }), [sortMode, showDetails]);
+  useCloudPref('tasks.view', viewPrefs, (v) => {
+    if (v.sortMode) setSortMode(v.sortMode);
+    if (typeof v.showDetails === 'boolean') setShowDetails(v.showDetails);
+  });
 
   const markActiveToday = () => setActivity((prev) => {
     const k = toDateKey(new Date());
@@ -505,7 +584,12 @@ function TasksPage({ reminders }) {
     };
   }, []);
 
-  const update = (id, patch) => setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  const update = (id, patch) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    if (user?.id) {
+      updateTaskInDb(user.id, id, patch);
+    }
+  };
 
   const addTask = (e) => {
     e.preventDefault();
@@ -515,6 +599,9 @@ function TasksPage({ reminders }) {
     setTasks((prev) => [...prev, task]);
     setSelectedId(task.id);
     setDraft('');
+    if (user?.id) {
+      createTaskInDb(user.id, task);
+    }
   };
 
   const addTaskToBucket = (bucket) => (e) => {
@@ -529,6 +616,9 @@ function TasksPage({ reminders }) {
     setTasks((prev) => [...prev, task]);
     setSelectedId(task.id);
     updateBoardDraft(bucket, '');
+    if (user?.id) {
+      createTaskInDb(user.id, task);
+    }
   };
 
   const toggleTask = (id) => {
@@ -537,12 +627,17 @@ function TasksPage({ reminders }) {
     // A repeating task never stays done — it rolls forward from today instead,
     // same row, same id. The row flash is the confirmation that it moved.
     if (t && !t.done && t.reminder?.repeat && t.reminder.date) {
-      update(id, { reminder: { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) } });
+      const newReminder = { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) };
+      update(id, { reminder: newReminder });
       reminders?.clearFired(id);
       flashRow(id);
       return;
     }
-    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
+    const nextDone = !t?.done;
+    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: nextDone } : x)));
+    if (user?.id && t) {
+      updateTaskInDb(user.id, id, { done: nextDone });
+    }
   };
   // Play the dissolve animation first, then drop the task once it finishes.
   const removeTask = (id) => {
@@ -554,30 +649,44 @@ function TasksPage({ reminders }) {
         next.delete(id);
         return next;
       });
+      if (user?.id) {
+        deleteTaskFromDb(user.id, id);
+      }
     }, 580);
   };
   const removeSelectedTasks = () => {
     if (!selectedTaskIds.length) return;
+    const idsToRemove = [...selectedTaskIds];
     setTasks((prev) => prev.filter((t) => !selectedIds.has(t.id)));
     clearSelectedIds();
     setMultiSelect(false);
+    if (user?.id) {
+      deleteTasksFromDb(user.id, idsToRemove);
+    }
   };
   const markSelectedDone = () => {
     if (!selectedTaskIds.length) return;
     markActiveToday();
     // Mirror toggleTask's repeat handling: a repeating task rolls forward
     // instead of completing, even when it's done through the bulk action.
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (!selectedIds.has(t.id) || t.done) return t;
-        if (t.reminder?.repeat && t.reminder.date) {
-          reminders?.clearFired(t.id);
-          flashRow(t.id);
-          return { ...t, reminder: { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) } };
+    const updated = tasks.map((t) => {
+      if (!selectedIds.has(t.id) || t.done) return t;
+      if (t.reminder?.repeat && t.reminder.date) {
+        reminders?.clearFired(t.id);
+        flashRow(t.id);
+        return { ...t, reminder: { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) } };
+      }
+      return { ...t, done: true };
+    });
+    setTasks(updated);
+    if (user?.id) {
+      selectedTaskIds.forEach((id) => {
+        const item = updated.find((x) => x.id === id);
+        if (item) {
+          updateTaskInDb(user.id, id, { done: item.done, reminder: item.reminder });
         }
-        return { ...t, done: true };
-      })
-    );
+      });
+    }
   };
   const cycleLayout = () => {
     setMenuOpen(false);
