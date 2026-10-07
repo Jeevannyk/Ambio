@@ -1,5 +1,9 @@
 -- Row Level Security for public.rooms
 --
+-- SUPERSEDED: 0002_rooms_owner.sql narrows the SELECT policy below from
+-- "any signed-in user" to "the room's creator only". This file is left as
+-- written for history; read 0002 for the current contract.
+--
 -- These policies are LOAD-BEARING. Since the rooms feature moved off
 -- localStorage, two independent paths depend on the SELECT policy below:
 --

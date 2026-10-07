@@ -3,12 +3,13 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Microphone, MicrophoneSlash, VideoCamera as Cam, VideoCameraSlash, Screencast, Hand,
   Smiley, Chat, Users, PhoneSlash, PaperPlaneRight, Shield, SpeakerX, UserMinus, Crown,
-  SquaresFour, Monitor, CornersOut, CornersIn, Play, Pause,
+  SquaresFour, Monitor, CornersOut, CornersIn, Play, Pause, WifiLow, WifiSlash,
 } from '@phosphor-icons/react';
-import { useRoomCall } from '../hooks/useRoomCall';
+import { ConnectionQuality } from 'livekit-client';
+import { useRoomCall, fetchRoomPass } from '../hooks/useRoomCall';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
+import { useActiveSpeaker } from '../hooks/useActiveSpeaker';
 import { formatTime } from '../hooks/usePomodoro';
-import { supabase } from '../lib/supabase';
 import VideoTile from '../components/room/VideoTile';
 import PreJoin from '../components/room/PreJoin';
 import CodeGate from '../components/room/CodeGate';
@@ -33,6 +34,12 @@ const ERROR_COPY = {
   },
 };
 
+// Anything not listed reads "Live".
+const STATUS_LABEL = {
+  connecting: 'Connecting…',
+  reconnecting: 'Reconnecting…',
+};
+
 const MEDIA_ERROR_TEXT = {
   mic: 'Microphone unavailable — check browser permissions',
   cam: 'Camera unavailable — check browser permissions',
@@ -48,10 +55,11 @@ function RoomCall({ pomodoro }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  // Rooms live in Supabase. The Rooms page hands the row over via router state;
-  // invite links and refreshes fall back to fetching it here.
-  const [room, setRoom] = useState(location.state?.room ?? null);
-  const [roomState, setRoomState] = useState(location.state?.room ? 'ready' : 'loading'); // loading | ready | missing | error
+  const [room, setRoom] = useState(null); // { id, name, max }
+  const [pass, setPass] = useState(null); // { token, url } — held, unused, until the gate opens
+  // loading | ready | missing | auth-error | token-error
+  const [roomState, setRoomState] = useState('loading');
+  const [passDetail, setPassDetail] = useState(''); // server message for the error screen
   // Auto-pass the gate only if they JUST typed the code on the Rooms page
   // (so the invite-code flow doesn't ask them to type it twice).
   const [verified, setVerified] = useState(
@@ -59,23 +67,30 @@ function RoomCall({ pomodoro }) {
   );
   const [session, setSession] = useState(null); // { name, micOn, camOn } | null
 
+  // /api/token is the only authenticated lookup for a room now: it returns the
+  // join pass AND the room's name/capacity. Reading the rooms table from here
+  // instead would come back empty for everyone but the room's creator, leaving
+  // the code gate with no room name to show (0002_rooms_owner.sql).
+  //
+  // The pass is fetched before the gate but only used after it — the token has
+  // a 2h TTL, so sitting on the gate screen can't expire it in practice.
   useEffect(() => {
-    if (roomState !== 'loading') return;
-    if (!supabase) { setRoomState('error'); return; }
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select('id, name, max')
-        .eq('id', id)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error) setRoomState('error');
-      else if (!data) setRoomState('missing');
-      else { setRoom(data); setRoomState('ready'); }
+      try {
+        const data = await fetchRoomPass(id);
+        if (cancelled) return;
+        setRoom({ id, name: data.name || id, max: data.max });
+        setPass({ token: data.token, url: data.url });
+        setRoomState('ready');
+      } catch (err) {
+        if (cancelled) return;
+        setPassDetail(err?.message || '');
+        setRoomState(err?.status === 404 ? 'missing' : err?.status === 401 ? 'auth-error' : 'token-error');
+      }
     })();
     return () => { cancelled = true; };
-  }, [id, roomState]);
+  }, [id]);
 
   if (roomState === 'loading') {
     return (
@@ -86,14 +101,16 @@ function RoomCall({ pomodoro }) {
   }
 
   if (roomState !== 'ready') {
+    const fatal = ERROR_COPY[roomState]; // 'missing' has its own copy below
     return (
       <div className="rc-error">
-        <h2>{roomState === 'missing' ? 'Room not found' : 'Rooms unavailable'}</h2>
+        <h2>{fatal ? fatal.title : 'Room not found'}</h2>
         <p>
-          {roomState === 'missing'
-            ? 'That code doesn’t match any room. Double-check it with the host.'
-            : 'Could not load this room. Check your connection and try again.'}
+          {fatal
+            ? fatal.body
+            : 'That code doesn’t match any room. Double-check it with the host.'}
         </p>
+        {fatal && passDetail && <p>({passDetail})</p>}
         <button className="rc-leave-btn" onClick={() => navigate('/rooms')}>Back to Rooms</button>
       </div>
     );
@@ -124,6 +141,7 @@ function RoomCall({ pomodoro }) {
     <RoomLive
       id={id}
       info={room}
+      pass={pass}
       pomodoro={pomodoro}
       displayName={session.name}
       initial={{
@@ -136,9 +154,27 @@ function RoomCall({ pomodoro }) {
   );
 }
 
-function RoomLive({ id, info, pomodoro, displayName, initial }) {
+/*
+ * Phone-width watcher. CSS can't reach the two things that need it: the grid's
+ * column count is computed from the head count in JS, and the focus timer has
+ * to move out of the header into the stage rather than just restyle.
+ */
+function useNarrowViewport() {
+  const query = '(max-width: 600px)';
+  const [narrow, setNarrow] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = (e) => setNarrow(e.matches);
+    setNarrow(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return narrow;
+}
+
+function RoomLive({ id, info, pass, pomodoro, displayName, initial }) {
   const navigate = useNavigate();
-  const call = useRoomCall(id, displayName, info.max ?? Infinity, initial);
+  const call = useRoomCall(id, pass, displayName, info.max ?? Infinity, initial);
   const [panel, setPanel] = useState(null); // 'chat' | 'people' | null
   const [chatText, setChatText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -149,6 +185,10 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   // Auto-hide the top/bottom bars after 3s of inactivity (immersive mode).
   const { visible: barsVisible, bindHover } = useAutoHideControls(3000);
+  // Who Speaker view follows: held through pauses, handed over only once a new
+  // voice has actually had the floor for 1.5s.
+  const activeSpeakerId = useActiveSpeaker(call.speakingIds);
+  const narrow = useNarrowViewport();
   const chatEndRef = useRef(null);
 
   // Chat payloads carry a client-supplied name, so they're spoofable. The
@@ -236,7 +276,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
   const tiles = [
     {
       tileId: 'me',
-      stream: call.localStream,
+      videoTrack: call.localVideoTrack,
       name: displayName,
       micOn: call.micOn,
       camOn: call.camOn,
@@ -247,24 +287,40 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
     },
     ...call.participants.map((p) => ({
       tileId: p.id,
-      stream: p.stream,
+      videoTrack: p.videoTrack,
+      audioTrack: p.audioTrack,
       name: p.name || 'Connecting…',
       micOn: p.micOn,
       camOn: p.camOn,
       hand: p.hand,
-      sharing: false,
+      sharing: p.sharing,
       isLocal: false,
       speaking: call.speakingIds.includes(p.id),
     })),
   ];
 
   const total = tiles.length;
-  const cols = total <= 1 ? 1 : total <= 4 ? 2 : 3;
+  // Head count alone puts three columns on a 375px phone: ~114px-wide cells that
+  // crop a 16:9 face down to a sliver. Narrow screens cap at two.
+  const cols = narrow
+    ? (total <= 1 ? 1 : 2)
+    : (total <= 1 ? 1 : total <= 4 ? 2 : 3);
 
-  // Speaker view: pinned > active speaker > first tile
-  const activeSpeakerId = call.speakingIds.find((sid) => sid !== null);
-  const mainTileId = pinnedId || activeSpeakerId || tiles[0]?.tileId;
-  const mainTile = tiles.find((t) => t.tileId === mainTileId) || tiles[0];
+  const weakSignal =
+    call.connectionQuality === ConnectionQuality.Poor ||
+    call.connectionQuality === ConnectionQuality.Lost;
+
+  // Speaker view main tile: an explicit pin wins, then whoever holds the floor,
+  // then — before anyone has spoken, or once the held speaker has left — the
+  // first remote. tiles[0] is always the local tile, so it is deliberately the
+  // last resort: showing yourself full-screen because the room happened to go
+  // quiet is exactly the flicker this order exists to prevent. You only land
+  // there by speaking, or by being alone in the room.
+  const mainTile =
+    tiles.find((t) => t.tileId === pinnedId) ||
+    tiles.find((t) => t.tileId === activeSpeakerId) ||
+    tiles.find((t) => !t.isLocal) ||
+    tiles[0];
   const stripTiles = tiles.filter((t) => t !== mainTile);
 
   const submitChat = (e) => {
@@ -272,6 +328,29 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
     call.sendChat(chatText);
     setChatText('');
   };
+
+  // At phone widths the header can't hold title + view toggle + timer, and the
+  // timer is the one that slid off-screen — in a study app, while it's running.
+  // It becomes a corner overlay on the stage instead.
+  const timerLabel = timer && (timer.mode === 'focus' ? 'Focus' : timer.mode === 'short' ? 'Break' : 'Long Break');
+  const timerClass = 'rc-timer' + (narrow ? ' rc-timer--float' : '');
+  const timerNode = timer && (call.isHost ? (
+    <button
+      type="button"
+      className={timerClass + ' rc-timer--btn'}
+      onClick={pomodoro.toggle}
+      title={pomodoro.running ? 'Pause focus timer' : 'Start focus timer'}
+    >
+      <span className="rc-timer-mode">{timerLabel}</span>
+      <span className="rc-timer-time">{formatTime(timer.secondsLeft)}</span>
+      {pomodoro.running ? <Pause size={13} /> : <Play size={13} />}
+    </button>
+  ) : (
+    <div className={timerClass}>
+      <span className="rc-timer-mode">{timerLabel}</span>
+      <span className="rc-timer-time">{formatTime(timer.secondsLeft)}</span>
+    </div>
+  ));
 
   const fatal = ERROR_COPY[call.status];
   if (fatal) {
@@ -318,15 +397,29 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
         <div className="rc-title">
           <h2>{info.name}</h2>
           <span className={'rc-status rc-status--' + call.status}>
-            {call.status === 'connecting' ? 'Connecting…' : 'Live'}
+            {STATUS_LABEL[call.status] || 'Live'}
           </span>
+          {/* Frozen video and a working app look identical without this. */}
+          {call.status === 'live' && weakSignal && (
+            <span
+              className="rc-signal"
+              title="Your connection is unstable — video may freeze or drop quality"
+            >
+              {call.connectionQuality === ConnectionQuality.Lost
+                ? <><WifiSlash size={12} /> No signal</>
+                : <><WifiLow size={12} /> Weak signal</>}
+            </span>
+          )}
           {call.isHost && <span className="rc-host-badge"><Crown size={12} /> Host</span>}
         </div>
 
         <div className="rc-view-toggle">
+          {/* Clicking a face in Gallery pins it and switches to Speaker, so
+              coming back here drops the pin — otherwise the next trip to
+              Speaker view silently opens on a stale, hand-picked tile. */}
           <button
             className={viewMode === 'gallery' ? 'active' : ''}
-            onClick={() => setViewMode('gallery')}
+            onClick={() => { setPinnedId(null); setViewMode('gallery'); }}
             title="Gallery view"
           >
             <SquaresFour size={14} /> Gallery
@@ -340,23 +433,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
           </button>
         </div>
 
-        {timer && (call.isHost ? (
-          <button
-            type="button"
-            className="rc-timer rc-timer--btn"
-            onClick={pomodoro.toggle}
-            title={pomodoro.running ? 'Pause focus timer' : 'Start focus timer'}
-          >
-            <span className="rc-timer-mode">{timer.mode === 'focus' ? 'Focus' : timer.mode === 'short' ? 'Break' : 'Long Break'}</span>
-            <span className="rc-timer-time">{formatTime(timer.secondsLeft)}</span>
-            {pomodoro.running ? <Pause size={13} /> : <Play size={13} />}
-          </button>
-        ) : (
-          <div className="rc-timer">
-            <span className="rc-timer-mode">{timer.mode === 'focus' ? 'Focus' : timer.mode === 'short' ? 'Break' : 'Long Break'}</span>
-            <span className="rc-timer-time">{formatTime(timer.secondsLeft)}</span>
-          </div>
-        ))}
+        {!narrow && timerNode}
         <div className="rc-invite">
           <span>Code: <strong>{id}</strong></span>
         </div>
@@ -365,6 +442,7 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
       <div className="rc-body">
         {/* Video area */}
         <div className="rc-stage">
+          {narrow && timerNode}
           {viewMode === 'gallery' ? (
             <div className="rc-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
               {tiles.map(({ tileId, ...t }) => (
@@ -382,7 +460,8 @@ function RoomLive({ id, info, pomodoro, displayName, initial }) {
                 {mainTile && (
                   <VideoTile
                     key={mainTile.tileId}
-                    stream={mainTile.stream}
+                    videoTrack={mainTile.videoTrack}
+                    audioTrack={mainTile.audioTrack}
                     name={mainTile.name}
                     micOn={mainTile.micOn}
                     camOn={mainTile.camOn}

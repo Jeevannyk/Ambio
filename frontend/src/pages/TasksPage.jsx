@@ -9,9 +9,23 @@ import ReminderModal from '../components/tasks/ReminderModal';
 import MoveToModal from '../components/tasks/MoveToModal';
 import TagsModal from '../components/tasks/TagsModal';
 import { Calendar } from '@/components/ui/calendar';
+import { DEFAULT_REMINDER_TIME, nextRepeatDate } from '../lib/reminders';
+import { DEFAULT_TAGS, mergeTags } from '../lib/tags';
+import { useAuth } from '../lib/AuthContext';
+import { useCloudPref } from '../hooks/useCloudPref';
+import {
+  fetchUserTasks,
+  createTaskInDb,
+  updateTaskInDb,
+  deleteTaskFromDb,
+  deleteTasksFromDb,
+  migrateLocalTasksToDb,
+  subscribeToUserTasks,
+} from '../lib/tasksApi';
 import './TasksPage.css';
 
 const STORAGE_KEY = 'react-todo-app.tasks';
+const TAGS_KEY = 'react-todo-app.tags';
 const LAYOUT_KEY = 'react-todo-app.tasks.layout';
 const VIEW_KEY = 'react-todo-app.tasks.view';
 const STREAK_KEY = 'react-todo-app.streak';
@@ -36,13 +50,20 @@ const VIEW_BUCKETS = [
   { key: 'someday', title: 'Someday', subtitle: () => '' },
 ];
 
+const REPEAT_LABELS = { day: 'Daily', week: 'Weekly', month: 'Monthly' };
+
 const reminderLabel = (r) => {
   if (!r) return 'Remind me';
   if (r.someday) return 'Someday';
   const d = new Date(`${r.date}T00:00`);
   const md = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  return r.time ? `${md}, ${r.time}` : md;
+  const when = r.time ? `${md}, ${r.time}` : md;
+  return r.repeat ? `${when} · ${REPEAT_LABELS[r.repeat.unit]}` : when;
 };
+
+// Two names fit on the chip; past that they'd truncate, so fall back to a count.
+const tagsLabel = (tags) =>
+  (!tags?.length ? 'Tags' : tags.length <= 2 ? tags.join(', ') : `Tags · ${tags.length}`);
 
 const toDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -81,49 +102,6 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-// Soft two-note "ding-dong" chime when a reminder fires — synthesized with the
-// Web Audio API so there's no audio file to ship. Sounds like a polished to-do app.
-let _audioCtx = null;
-function playReminderChime() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    _audioCtx = _audioCtx || new Ctx();
-    const ctx = _audioCtx;
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
-    // Two bell tones (C6 then G5) with a quick attack and gentle decay.
-    [[1046.5, 0], [783.99, 0.18]].forEach(([freq, delay]) => {
-      const t = now + delay;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.22, t + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.95);
-    });
-  } catch {
-    /* audio not available — fail silently */
-  }
-}
-
-// Parse a reminder's date + "9:00 AM" time into a real Date (local time).
-function reminderDueAt(reminder) {
-  if (!reminder || reminder.someday || !reminder.date) return null;
-  const base = new Date(`${reminder.date}T00:00`);
-  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec((reminder.time || '').trim());
-  if (m) {
-    let h = parseInt(m[1], 10) % 12;
-    if (m[3] && m[3].toUpperCase() === 'PM') h += 12;
-    base.setHours(h, parseInt(m[2], 10), 0, 0);
-  }
-  return base;
-}
-
 // Current + longest streak from a Set of 'YYYY-MM-DD' activity day-keys.
 // Current streak stays "alive" through today even if today isn't done yet.
 function computeStreaks(daySet) {
@@ -155,6 +133,17 @@ function loadTasks() {
   }
 }
 
+// The tags a user has coined, kept apart from the tasks so one survives being
+// removed from the last task carrying it.
+function loadTagVocab() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TAGS_KEY) || 'null');
+    return Array.isArray(saved) ? saved : DEFAULT_TAGS;
+  } catch {
+    return DEFAULT_TAGS;
+  }
+}
+
 const taskDate = (task) => {
   if (task.reminder?.someday) return null;
   if (task.reminder?.date) return new Date(`${task.reminder.date}T00:00`);
@@ -172,8 +161,10 @@ const bucketForTask = (task, now = today()) => {
   return 'upcoming';
 };
 
-function TasksPage() {
+function TasksPage({ reminders }) {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState(loadTasks);
+  const [tagVocab, setTagVocab] = useState(loadTagVocab);
   const [selectedId, setSelectedId] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false); // mobile: detail slide-over open
   const [search, setSearch] = useState('');
@@ -207,6 +198,8 @@ function TasksPage() {
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [removingIds, setRemovingIds] = useState(() => new Set()); // rows mid delete-animation
+  const [flashIds, setFlashIds] = useState(() => new Set()); // rows a reminder just fired on
+  const [todayKey, setTodayKey] = useState(() => toDateKey(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const calendarRef = useRef(null);
@@ -231,6 +224,57 @@ function TasksPage() {
   const viewRef = useRef(null);
   const filterRef = useRef(null);
   const posRef = useRef(new Map());
+  // The reminder picker scales out of its chip and returns focus there on close.
+  const reminderChipRef = useRef(null);
+  const [reminderOrigin, setReminderOrigin] = useState(null);
+  const [reminderSeq, setReminderSeq] = useState(0);
+  // The tag picker opens out of its own chip the same way.
+  const tagsChipRef = useRef(null);
+  const [tagsOrigin, setTagsOrigin] = useState(null);
+  const [tagsSeq, setTagsSeq] = useState(0);
+
+  const flashRow = (id) => {
+    setFlashIds((prev) => new Set(prev).add(id));
+    setTimeout(() => setFlashIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    }), 2400);
+  };
+
+  const openReminder = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    reminderChipRef.current = e.currentTarget;
+    // The modal is centred, so 50% of its own box is the viewport centre —
+    // offsetting from there anchors the origin on the chip without measuring it.
+    setReminderOrigin({
+      x: rect.left + rect.width / 2 - window.innerWidth / 2,
+      y: rect.top + rect.height / 2 - window.innerHeight / 2,
+    });
+    setReminderSeq((n) => n + 1); // remount so the picker re-reads the task's reminder
+    setModal('reminder');
+  };
+
+  const closeReminder = () => {
+    setModal(null);
+    reminderChipRef.current?.focus();
+  };
+
+  const openTags = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    tagsChipRef.current = e.currentTarget;
+    setTagsOrigin({
+      x: rect.left + rect.width / 2 - window.innerWidth / 2,
+      y: rect.top + rect.height / 2 - window.innerHeight / 2,
+    });
+    setTagsSeq((n) => n + 1); // remount so the picker re-reads the task's tags
+    setModal('tags');
+  };
+
+  const closeTags = () => {
+    setModal(null);
+    tagsChipRef.current?.focus();
+  };
 
   useEffect(() => {
     const onDocClick = (event) => {
@@ -250,6 +294,7 @@ function TasksPage() {
         setFilterOpen(false);
         setFilterPanel(null);
         setCalendarOpen(false);
+        setModal(null);
       }
     };
     document.addEventListener('pointerdown', onDocClick);
@@ -260,6 +305,59 @@ function TasksPage() {
     };
   }, []);
 
+  // Sync tasks with Supabase when logged in + listen for real-time changes across devices
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+
+    async function syncWithSupabase() {
+      const remoteTasks = await fetchUserTasks(user.id);
+      if (!active) return;
+      if (remoteTasks && remoteTasks.length > 0) {
+        const formatted = remoteTasks.map((t) => ({
+          list: 'Personal',
+          notes: '',
+          subtasks: [],
+          tags: [],
+          reminder: null,
+          attachments: [],
+          ...t,
+        }));
+        setTasks(formatted);
+      } else {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        const local = saved ? JSON.parse(saved) : [];
+        if (local.length > 0) {
+          await migrateLocalTasksToDb(user.id, local);
+        }
+      }
+    }
+
+    syncWithSupabase();
+
+    const unsubscribe = subscribeToUserTasks(user.id, () => {
+      fetchUserTasks(user.id).then((remoteTasks) => {
+        if (remoteTasks && active) {
+          const formatted = remoteTasks.map((t) => ({
+            list: 'Personal',
+            notes: '',
+            subtasks: [],
+            tags: [],
+            reminder: null,
+            attachments: [],
+            ...t,
+          }));
+          setTasks(formatted);
+        }
+      });
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [user?.id]);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
@@ -269,12 +367,30 @@ function TasksPage() {
   }, [tasks]);
 
   useEffect(() => {
+    localStorage.setItem(TAGS_KEY, JSON.stringify(tagVocab));
+  }, [tagVocab]);
+
+  useEffect(() => {
     localStorage.setItem(LAYOUT_KEY, layoutMode);
   }, [layoutMode]);
 
   useEffect(() => {
     localStorage.setItem(STREAK_KEY, JSON.stringify([...activity]));
   }, [activity]);
+
+  // Follow the account across devices. Streak days only ever accumulate, so
+  // those merge as a union; everything else takes the latest remote copy.
+  const activityList = useMemo(() => [...activity].sort(), [activity]);
+  useCloudPref('tasks.tags', tagVocab, setTagVocab);
+  useCloudPref('tasks.layout', layoutMode, setLayoutMode);
+  useCloudPref('tasks.streak', activityList, (days) => setActivity(new Set(days)), (local, remote) =>
+    [...new Set([...local, ...remote])].sort()
+  );
+  const viewPrefs = useMemo(() => ({ sortMode, showDetails }), [sortMode, showDetails]);
+  useCloudPref('tasks.view', viewPrefs, (v) => {
+    if (v.sortMode) setSortMode(v.sortMode);
+    if (typeof v.showDetails === 'boolean') setShowDetails(v.showDetails);
+  });
 
   const markActiveToday = () => setActivity((prev) => {
     const k = toDateKey(new Date());
@@ -291,35 +407,22 @@ function TasksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Watch reminders and chime (+ notify) when one comes due. Each task fires once.
-  const firedReminders = useRef(new Set());
+  // A fired reminder flashes its row, so a muted user still gets a signal.
   useEffect(() => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {});
-    }
-    const check = () => {
-      const now = Date.now();
-      tasks.forEach((t) => {
-        if (t.done) return;
-        const due = reminderDueAt(t.reminder);
-        if (!due) return;
-        const key = `${t.id}|${t.reminder.date}|${t.reminder.time}`;
-        if (firedReminders.current.has(key)) return;
-        // Fire if due within the last 2 minutes (not for long-past reminders on load).
-        const delta = now - due.getTime();
-        if (delta >= 0 && delta < 120000) {
-          firedReminders.current.add(key);
-          playReminderChime();
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            try { new Notification('Reminder', { body: t.text }); } catch {}
-          }
-        }
-      });
-    };
-    check();
-    const id = setInterval(check, 20000);
-    return () => clearInterval(id);
-  }, [tasks]);
+    const ids = Object.keys(reminders?.firedAt || {});
+    if (!ids.length) return;
+    ids.forEach(flashRow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reminders?.firedAt]);
+
+  // Buckets key off today's date — bump it at midnight so a tab left open
+  // overnight doesn't keep filing new tasks under yesterday.
+  useEffect(() => {
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 5);
+    const id = setTimeout(() => setTodayKey(toDateKey(new Date())), midnight.getTime() - Date.now());
+    return () => clearTimeout(id);
+  }, [todayKey]);
 
   // First visit of a new day: if a streak is alive, celebrate it once.
   useEffect(() => {
@@ -369,6 +472,9 @@ function TasksPage() {
     tasks.forEach((t) => (t.tags || []).forEach((tag) => set.add(tag)));
     return [...set].sort();
   }, [tasks]);
+
+  // What the picker offers: coined tags plus anything already in use.
+  const pickerTags = useMemo(() => mergeTags(tagVocab, allTags), [tagVocab, allTags]);
 
   const activeFilterCount = (filterByLists.size > 0 ? 1 : 0) + (filterByTags.size > 0 ? 1 : 0) + (filterByStatus !== 'all' ? 1 : 0);
 
@@ -421,27 +527,69 @@ function TasksPage() {
   // the one under the cursor gets selected live.
   const dragAnchorRef = useRef(null);
   const draggingRef = useRef(false);
+  // Pointer-down origin + "pressed but not dragging yet" state, so a plain
+  // click can't arm drag-select before the pointer has actually travelled.
+  const dragOriginRef = useRef(null);
+  const armedRef = useRef(false);
   const selectRange = (fromIdx, toIdx) => {
     const lo = Math.min(fromIdx, toIdx);
     const hi = Math.max(fromIdx, toIdx);
     const ids = visible.slice(lo, hi + 1).map((t) => t.id);
     setSelectedIds(new Set(ids));
   };
-  const startDragSelect = (idx) => {
-    draggingRef.current = true;
+  const startDragSelect = (e, idx) => {
+    // Capture keeps the drag alive once the pointer leaves the list or scroller.
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     dragAnchorRef.current = idx;
-    selectRange(idx, idx);
+    dragOriginRef.current = { x: e.clientX, y: e.clientY };
+    armedRef.current = false;
+    draggingRef.current = false;
+  };
+  const moveDragSelect = (e) => {
+    const origin = dragOriginRef.current;
+    if (!origin) return;
+    if (!armedRef.current) {
+      if (Math.hypot(e.clientX - origin.x, e.clientY - origin.y) <= 10) return;
+      armedRef.current = true;
+      draggingRef.current = true;
+      selectRange(dragAnchorRef.current, dragAnchorRef.current);
+    }
+    // Capture routes every move to the anchor row, so pointerenter never fires
+    // on the others — hit-test whichever row is under the cursor instead.
+    const row = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-tid]');
+    if (!row) return;
+    const idx = visible.findIndex((t) => t.id === row.dataset.tid);
+    if (idx >= 0) selectRange(dragAnchorRef.current, idx);
   };
   const dragOverRow = (idx) => {
     if (draggingRef.current && dragAnchorRef.current != null) selectRange(dragAnchorRef.current, idx);
   };
   useEffect(() => {
-    const end = () => { draggingRef.current = false; dragAnchorRef.current = null; };
+    const end = () => {
+      draggingRef.current = false;
+      dragAnchorRef.current = null;
+      dragOriginRef.current = null;
+      armedRef.current = false;
+    };
+    // pointerup alone leaves the drag armed when the OS steals the pointer
+    // (palm rejection, Alt+Tab, a browser gesture) -- the refs would still be
+    // live the next time the cursor crossed a row.
     window.addEventListener('pointerup', end);
-    return () => window.removeEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    window.addEventListener('lostpointercapture', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+      window.removeEventListener('lostpointercapture', end);
+    };
   }, []);
 
-  const update = (id, patch) => setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  const update = (id, patch) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    if (user?.id) {
+      updateTaskInDb(user.id, id, patch);
+    }
+  };
 
   const addTask = (e) => {
     e.preventDefault();
@@ -451,6 +599,9 @@ function TasksPage() {
     setTasks((prev) => [...prev, task]);
     setSelectedId(task.id);
     setDraft('');
+    if (user?.id) {
+      createTaskInDb(user.id, task);
+    }
   };
 
   const addTaskToBucket = (bucket) => (e) => {
@@ -459,18 +610,34 @@ function TasksPage() {
     if (!text) return;
     const task = { id: uid(), text, done: false, list: 'Personal', notes: '', subtasks: [], tags: [], reminder: null, attachments: [] };
     const base = today();
-    if (bucket === 'tomorrow') task.reminder = { date: toDateKey(offsetDays(base, 1)), time: '9:00 AM' };
-    if (bucket === 'upcoming') task.reminder = { date: toDateKey(offsetDays(base, 3)), time: '9:00 AM' };
-    if (bucket === 'someday') task.reminder = { someday: true, time: '9:00 AM' };
+    if (bucket === 'tomorrow') task.reminder = { date: toDateKey(offsetDays(base, 1)), time: DEFAULT_REMINDER_TIME };
+    if (bucket === 'upcoming') task.reminder = { date: toDateKey(offsetDays(base, 3)), time: DEFAULT_REMINDER_TIME };
+    if (bucket === 'someday') task.reminder = { someday: true };
     setTasks((prev) => [...prev, task]);
     setSelectedId(task.id);
     updateBoardDraft(bucket, '');
+    if (user?.id) {
+      createTaskInDb(user.id, task);
+    }
   };
 
   const toggleTask = (id) => {
     const t = tasks.find((x) => x.id === id);
     if (t && !t.done) markActiveToday(); // completing one keeps today's streak
-    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
+    // A repeating task never stays done — it rolls forward from today instead,
+    // same row, same id. The row flash is the confirmation that it moved.
+    if (t && !t.done && t.reminder?.repeat && t.reminder.date) {
+      const newReminder = { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) };
+      update(id, { reminder: newReminder });
+      reminders?.clearFired(id);
+      flashRow(id);
+      return;
+    }
+    const nextDone = !t?.done;
+    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: nextDone } : x)));
+    if (user?.id && t) {
+      updateTaskInDb(user.id, id, { done: nextDone });
+    }
   };
   // Play the dissolve animation first, then drop the task once it finishes.
   const removeTask = (id) => {
@@ -482,18 +649,44 @@ function TasksPage() {
         next.delete(id);
         return next;
       });
+      if (user?.id) {
+        deleteTaskFromDb(user.id, id);
+      }
     }, 580);
   };
   const removeSelectedTasks = () => {
     if (!selectedTaskIds.length) return;
+    const idsToRemove = [...selectedTaskIds];
     setTasks((prev) => prev.filter((t) => !selectedIds.has(t.id)));
     clearSelectedIds();
     setMultiSelect(false);
+    if (user?.id) {
+      deleteTasksFromDb(user.id, idsToRemove);
+    }
   };
   const markSelectedDone = () => {
     if (!selectedTaskIds.length) return;
     markActiveToday();
-    setTasks((prev) => prev.map((t) => (selectedIds.has(t.id) ? { ...t, done: true } : t)));
+    // Mirror toggleTask's repeat handling: a repeating task rolls forward
+    // instead of completing, even when it's done through the bulk action.
+    const updated = tasks.map((t) => {
+      if (!selectedIds.has(t.id) || t.done) return t;
+      if (t.reminder?.repeat && t.reminder.date) {
+        reminders?.clearFired(t.id);
+        flashRow(t.id);
+        return { ...t, reminder: { ...t.reminder, date: toDateKey(nextRepeatDate(t.reminder.repeat.unit)) } };
+      }
+      return { ...t, done: true };
+    });
+    setTasks(updated);
+    if (user?.id) {
+      selectedTaskIds.forEach((id) => {
+        const item = updated.find((x) => x.id === id);
+        if (item) {
+          updateTaskInDb(user.id, id, { done: item.done, reminder: item.reminder });
+        }
+      });
+    }
   };
   const cycleLayout = () => {
     setMenuOpen(false);
@@ -599,7 +792,7 @@ function TasksPage() {
       buckets[bucketForTask(task, now)].push(task);
     });
     return buckets;
-  }, [visible]);
+  }, [visible, todayKey]);
 
   const renderTaskRow = (task, { compact = false } = {}) => (
     <div
@@ -610,7 +803,8 @@ function TasksPage() {
         (compact ? ' t2-row--compact' : '') +
         (task.id === selectedId ? ' t2-row--active' : '') +
         (multiSelect && selectedIds.has(task.id) ? ' t2-row--selected' : '') +
-        (removingIds.has(task.id) ? ' t2-row--removing' : '')
+        (removingIds.has(task.id) ? ' t2-row--removing' : '') +
+        (flashIds.has(task.id) ? ' t2-row--flash' : '')
       }
     >
       {multiSelect ? (
@@ -694,6 +888,7 @@ function TasksPage() {
             <strong>All my tasks</strong>
           </div>
           <span className="t2-divider" />
+          {/* Menus stay mounted (hidden) so they can transition out — see .t2-menu-pop. */}
           <div className="t2-menu-wrap" ref={viewRef}>
             <button
               className={'t2-menu-btn' + (viewOpen ? ' t2-menu-btn--open' : '')}
@@ -707,18 +902,16 @@ function TasksPage() {
             >
               <ArrowsDownUp size={15} /> View
             </button>
-            {viewOpen && (
-              <div className="t2-menu-pop t2-menu-pop--view" role="menu" aria-label="View options">
-                <button className="t2-menu-item t2-menu-item--on" role="menuitem" onClick={toggleViewSort}>
-                  <span>Sort by</span>
-                  <span className="t2-menu-meta">{sortLabel}</span>
-                </button>
-                <button className="t2-menu-item" role="menuitem" onClick={toggleDetailsVisibility}>
-                  <span>Task details</span>
-                  <span className="t2-menu-meta">{showDetails ? 'Hide' : 'Show'}</span>
-                </button>
-              </div>
-            )}
+            <div className="t2-menu-pop t2-menu-pop--view" role="menu" aria-label="View options" hidden={!viewOpen}>
+              <button className="t2-menu-item t2-menu-item--on" role="menuitem" onClick={toggleViewSort}>
+                <span>Sort by</span>
+                <span className="t2-menu-meta">{sortLabel}</span>
+              </button>
+              <button className="t2-menu-item" role="menuitem" onClick={toggleDetailsVisibility}>
+                <span>Task details</span>
+                <span className="t2-menu-meta">{showDetails ? 'Hide' : 'Show'}</span>
+              </button>
+            </div>
           </div>
           <div className="t2-menu-wrap" ref={filterRef}>
             <button
@@ -730,78 +923,76 @@ function TasksPage() {
             >
               <Funnel size={15} /> Filter{activeFilterCount > 0 && <span className="t2-filter-badge">{activeFilterCount}</span>}
             </button>
-            {filterOpen && (
-              <div className="t2-menu-pop t2-filter-pop" role="menu" aria-label="Filter options">
-                {!filterPanel ? (
-                  <>
-                    <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('lists')}>
-                      <span className="t2-menu-item-left"><Lock size={15} className="t2-menu-item-icon" /> My lists</span>
-                      <span className="t2-menu-nav-right">{filterByLists.size > 0 && <span className="t2-filter-badge">{filterByLists.size}</span>}<CaretRight size={14} /></span>
+            <div className="t2-menu-pop t2-filter-pop" role="menu" aria-label="Filter options" hidden={!filterOpen}>
+              {!filterPanel ? (
+                <>
+                  <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('lists')}>
+                    <span className="t2-menu-item-left"><Lock size={15} className="t2-menu-item-icon" /> My lists</span>
+                    <span className="t2-menu-nav-right">{filterByLists.size > 0 && <span className="t2-filter-badge">{filterByLists.size}</span>}<CaretRight size={14} /></span>
+                  </button>
+                  <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('tags')}>
+                    <span className="t2-menu-item-left"><Hash size={15} className="t2-menu-item-icon" /> Tags</span>
+                    <span className="t2-menu-nav-right">{filterByTags.size > 0 && <span className="t2-filter-badge">{filterByTags.size}</span>}<CaretRight size={14} /></span>
+                  </button>
+                  <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('status')}>
+                    <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Status</span>
+                    <span className="t2-menu-nav-right">{filterByStatus !== 'all' && <span className="t2-filter-badge">1</span>}<CaretRight size={14} /></span>
+                  </button>
+                  {activeFilterCount > 0 && (
+                    <button className="t2-filter-clear" onClick={() => { setFilterByLists(new Set()); setFilterByTags(new Set()); setFilterByStatus('all'); }}>
+                      Clear all filters
                     </button>
-                    <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('tags')}>
-                      <span className="t2-menu-item-left"><Hash size={15} className="t2-menu-item-icon" /> Tags</span>
-                      <span className="t2-menu-nav-right">{filterByTags.size > 0 && <span className="t2-filter-badge">{filterByTags.size}</span>}<CaretRight size={14} /></span>
+                  )}
+                </>
+              ) : filterPanel === 'lists' ? (
+                <>
+                  <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> My lists</button>
+                  {LISTS.map((list) => (
+                    <button
+                      key={list}
+                      className={'t2-menu-item t2-menu-item--check' + (filterByLists.has(list) ? ' t2-menu-item--on' : '')}
+                      role="menuitemcheckbox"
+                      aria-checked={filterByLists.has(list)}
+                      onClick={() => setFilterByLists((prev) => { const next = new Set(prev); next.has(list) ? next.delete(list) : next.add(list); return next; })}
+                    >
+                      <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByLists.has(list) ? ' t2-check-dot--on' : '')}>{filterByLists.has(list) && <Check size={10} />}</span>{list}</span>
                     </button>
-                    <button className="t2-menu-item t2-menu-item--nav" role="menuitem" onClick={() => setFilterPanel('status')}>
-                      <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Status</span>
-                      <span className="t2-menu-nav-right">{filterByStatus !== 'all' && <span className="t2-filter-badge">1</span>}<CaretRight size={14} /></span>
+                  ))}
+                </>
+              ) : filterPanel === 'tags' ? (
+                <>
+                  <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Tags</button>
+                  {allTags.length === 0 ? (
+                    <p className="t2-filter-empty">No tags yet. Add tags to tasks first.</p>
+                  ) : allTags.map((tag) => (
+                    <button
+                      key={tag}
+                      className={'t2-menu-item t2-menu-item--check' + (filterByTags.has(tag) ? ' t2-menu-item--on' : '')}
+                      role="menuitemcheckbox"
+                      aria-checked={filterByTags.has(tag)}
+                      onClick={() => setFilterByTags((prev) => { const next = new Set(prev); next.has(tag) ? next.delete(tag) : next.add(tag); return next; })}
+                    >
+                      <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByTags.has(tag) ? ' t2-check-dot--on' : '')}>{filterByTags.has(tag) && <Check size={10} />}</span>#{tag}</span>
                     </button>
-                    {activeFilterCount > 0 && (
-                      <button className="t2-filter-clear" onClick={() => { setFilterByLists(new Set()); setFilterByTags(new Set()); setFilterByStatus('all'); }}>
-                        Clear all filters
-                      </button>
-                    )}
-                  </>
-                ) : filterPanel === 'lists' ? (
-                  <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> My lists</button>
-                    {LISTS.map((list) => (
-                      <button
-                        key={list}
-                        className={'t2-menu-item t2-menu-item--check' + (filterByLists.has(list) ? ' t2-menu-item--on' : '')}
-                        role="menuitemcheckbox"
-                        aria-checked={filterByLists.has(list)}
-                        onClick={() => setFilterByLists((prev) => { const next = new Set(prev); next.has(list) ? next.delete(list) : next.add(list); return next; })}
-                      >
-                        <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByLists.has(list) ? ' t2-check-dot--on' : '')}>{filterByLists.has(list) && <Check size={10} />}</span>{list}</span>
-                      </button>
-                    ))}
-                  </>
-                ) : filterPanel === 'tags' ? (
-                  <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Tags</button>
-                    {allTags.length === 0 ? (
-                      <p className="t2-filter-empty">No tags yet. Add tags to tasks first.</p>
-                    ) : allTags.map((tag) => (
-                      <button
-                        key={tag}
-                        className={'t2-menu-item t2-menu-item--check' + (filterByTags.has(tag) ? ' t2-menu-item--on' : '')}
-                        role="menuitemcheckbox"
-                        aria-checked={filterByTags.has(tag)}
-                        onClick={() => setFilterByTags((prev) => { const next = new Set(prev); next.has(tag) ? next.delete(tag) : next.add(tag); return next; })}
-                      >
-                        <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByTags.has(tag) ? ' t2-check-dot--on' : '')}>{filterByTags.has(tag) && <Check size={10} />}</span>#{tag}</span>
-                      </button>
-                    ))}
-                  </>
-                ) : (
-                  <>
-                    <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Status</button>
-                    {[['all', 'All tasks'], ['active', 'Active'], ['done', 'Completed']].map(([val, label]) => (
-                      <button
-                        key={val}
-                        className={'t2-menu-item t2-menu-item--check' + (filterByStatus === val ? ' t2-menu-item--on' : '')}
-                        role="menuitemradio"
-                        aria-checked={filterByStatus === val}
-                        onClick={() => setFilterByStatus(val)}
-                      >
-                        <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByStatus === val ? ' t2-check-dot--on' : '')}>{filterByStatus === val && <Check size={10} />}</span>{label}</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
+                  ))}
+                </>
+              ) : (
+                <>
+                  <button className="t2-filter-back" onClick={() => setFilterPanel(null)}><CaretLeft size={14} /> Status</button>
+                  {[['all', 'All tasks'], ['active', 'Active'], ['done', 'Completed']].map(([val, label]) => (
+                    <button
+                      key={val}
+                      className={'t2-menu-item t2-menu-item--check' + (filterByStatus === val ? ' t2-menu-item--on' : '')}
+                      role="menuitemradio"
+                      aria-checked={filterByStatus === val}
+                      onClick={() => setFilterByStatus(val)}
+                    >
+                      <span className="t2-menu-item-left"><span className={'t2-check-dot' + (filterByStatus === val ? ' t2-check-dot--on' : '')}>{filterByStatus === val && <Check size={10} />}</span>{label}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
           </div>
           <div className="t2-menu-wrap" ref={menuRef}>
             <button
@@ -813,31 +1004,29 @@ function TasksPage() {
             >
               <DotsThree size={16} />
             </button>
-            {menuOpen && (
-              <div className="t2-menu-pop" role="menu" aria-label="Task actions">
-                <button className="t2-menu-item" role="menuitem" onClick={cycleLayout}>
-                  <span className="t2-menu-item-left"><SquaresFour size={15} className="t2-menu-item-icon" /> Layout</span>
-                  <span className="t2-menu-meta">{layoutLabel}</span>
-                </button>
-                <button
-                  className={'t2-menu-item' + (multiSelect ? ' t2-menu-item--on' : '')}
-                  role="menuitem"
-                  onClick={() => {
-                    const next = !multiSelect;
-                    setMultiSelect(next);
-                    if (!next) clearSelectedIds();
-                    setMenuOpen(false);
-                  }}
-                >
-                  <span className="t2-menu-item-left"><Stack size={15} className="t2-menu-item-icon" /> Multi-select</span>
-                  <span className="t2-menu-meta">{multiSelect ? 'On' : 'Off'}</span>
-                </button>
-                <button className="t2-menu-item" role="menuitem" onClick={handlePrint}>
-                  <span className="t2-menu-item-left"><Printer size={15} className="t2-menu-item-icon" /> Print</span>
-                  <span className="t2-menu-meta">Visible tasks</span>
-                </button>
-              </div>
-            )}
+            <div className="t2-menu-pop" role="menu" aria-label="Task actions" hidden={!menuOpen}>
+              <button className="t2-menu-item" role="menuitem" onClick={cycleLayout}>
+                <span className="t2-menu-item-left"><SquaresFour size={15} className="t2-menu-item-icon" /> Layout</span>
+                <span className="t2-menu-meta">{layoutLabel}</span>
+              </button>
+              <button
+                className={'t2-menu-item' + (multiSelect ? ' t2-menu-item--on' : '')}
+                role="menuitem"
+                onClick={() => {
+                  const next = !multiSelect;
+                  setMultiSelect(next);
+                  if (!next) clearSelectedIds();
+                  setMenuOpen(false);
+                }}
+              >
+                <span className="t2-menu-item-left"><Stack size={15} className="t2-menu-item-icon" /> Multi-select</span>
+                <span className="t2-menu-meta">{multiSelect ? 'On' : 'Off'}</span>
+              </button>
+              <button className="t2-menu-item" role="menuitem" onClick={handlePrint}>
+                <span className="t2-menu-item-left"><Printer size={15} className="t2-menu-item-icon" /> Print</span>
+                <span className="t2-menu-meta">Visible tasks</span>
+              </button>
+            </div>
           </div>
         </div>
         <div className="t2-tools">
@@ -936,9 +1125,10 @@ function TasksPage() {
                 <div
                   key={t.id}
                   data-tid={t.id}
-                  className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '') + (removingIds.has(t.id) ? ' t2-row--removing' : '')}
+                  className={'t2-row' + (t.id === selectedId ? ' t2-row--active' : '') + (multiSelect && selectedIds.has(t.id) ? ' t2-row--selected' : '') + (removingIds.has(t.id) ? ' t2-row--removing' : '') + (flashIds.has(t.id) ? ' t2-row--flash' : '')}
                   style={multiSelect ? { touchAction: 'none' } : undefined}
-                  onPointerDown={() => { if (multiSelect) startDragSelect(i); }}
+                  onPointerDown={(e) => { if (multiSelect) startDragSelect(e, i); }}
+                  onPointerMove={(e) => { if (multiSelect) moveDragSelect(e); }}
                   onPointerEnter={() => dragOverRow(i)}
                 >
                   {multiSelect ? (
@@ -969,7 +1159,10 @@ function TasksPage() {
                     type="button"
                     className="t2-row-text"
                     onClick={() => {
-                      if (!multiSelect) { setSelectedId(t.id); setDetailOpen(true); }
+                      // In multi-select the drag threshold means pointer-down no
+                      // longer selects, so the title has to carry the tap itself.
+                      if (multiSelect) toggleTaskSelection(t.id);
+                      else { setSelectedId(t.id); setDetailOpen(true); }
                     }}
                   >
                     <span className={'t2-row-title' + (t.done ? ' t2-row-title--done' : '')}>{t.text}</span>
@@ -1012,15 +1205,15 @@ function TasksPage() {
                 <input className="t2-detail-title" value={selected.text} onChange={(e) => update(selected.id, { text: e.target.value })} placeholder="Task name" />
 
                 <div className="t2-chips">
-                  <button className="t2-chip" onClick={() => setModal('reminder')}>
+                  <button className="t2-chip" onClick={openReminder}>
                     <Bell size={15} className="t2-chip-i t2-chip-i--red" /> {reminderLabel(selected.reminder)}
                   </button>
                   <button className="t2-chip" onClick={() => setModal('move')}>
                     <FileText size={15} className="t2-chip-i t2-chip-i--amber" /> {selected.list}
                   </button>
-                  <button className="t2-chip" onClick={() => setModal('tags')}>
+                  <button className="t2-chip" onClick={openTags}>
                     <Hash size={15} className="t2-chip-i t2-chip-i--blue" />
-                    {selected.tags?.length ? `Tags · ${selected.tags.length}` : 'Tags'}
+                    {tagsLabel(selected.tags)}
                   </button>
                 </div>
 
@@ -1050,19 +1243,17 @@ function TasksPage() {
                     >
                       <DotsThree size={16} />
                     </button>
-                    {subMenuOpen && (
-                      <div className="t2-menu-pop t2-submenu-pop" role="menu" aria-label="Subtask actions">
-                        <button className="t2-menu-item" role="menuitem" onClick={markAllSubtasksDone}>
-                          <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Mark all done</span>
-                        </button>
-                        <button className="t2-menu-item" role="menuitem" onClick={clearCompletedSubtasks}>
-                          <span className="t2-menu-item-left"><Check size={15} className="t2-menu-item-icon" /> Clear completed</span>
-                        </button>
-                        <button className="t2-menu-item t2-menu-item--danger" role="menuitem" onClick={deleteAllSubtasks}>
-                          <span className="t2-menu-item-left"><Trash size={15} className="t2-menu-item-icon" /> Delete all</span>
-                        </button>
-                      </div>
-                    )}
+                    <div className="t2-menu-pop t2-submenu-pop" role="menu" aria-label="Subtask actions" hidden={!subMenuOpen}>
+                      <button className="t2-menu-item" role="menuitem" onClick={markAllSubtasksDone}>
+                        <span className="t2-menu-item-left"><CheckCircle size={15} className="t2-menu-item-icon" /> Mark all done</span>
+                      </button>
+                      <button className="t2-menu-item" role="menuitem" onClick={clearCompletedSubtasks}>
+                        <span className="t2-menu-item-left"><Check size={15} className="t2-menu-item-icon" /> Clear completed</span>
+                      </button>
+                      <button className="t2-menu-item t2-menu-item--danger" role="menuitem" onClick={deleteAllSubtasks}>
+                        <span className="t2-menu-item-left"><Trash size={15} className="t2-menu-item-icon" /> Delete all</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="t2-subs">
@@ -1148,13 +1339,18 @@ function TasksPage() {
         </div>
       )}
 
-      {selected && modal === 'reminder' && (
+      {/* Stays mounted while closed so it can transition out — see .rm-overlay. */}
+      {selected && (
         <ReminderModal
+          key={reminderSeq}
+          open={modal === 'reminder'}
           initial={selected.reminder}
-          onCancel={() => setModal(null)}
+          origin={reminderOrigin}
+          sound={reminders}
+          onCancel={closeReminder}
           onSet={(r) => {
             update(selected.id, { reminder: r });
-            setModal(null);
+            closeReminder();
           }}
         />
       )}
@@ -1169,13 +1365,18 @@ function TasksPage() {
           }}
         />
       )}
-      {selected && modal === 'tags' && (
+      {selected && (
         <TagsModal
+          key={tagsSeq}
+          open={modal === 'tags'}
+          tags={pickerTags}
           selected={selected.tags}
-          onCancel={() => setModal(null)}
+          origin={tagsOrigin}
+          onCreate={(name) => setTagVocab((prev) => [...prev, name])}
+          onCancel={closeTags}
           onSave={(tags) => {
             update(selected.id, { tags });
-            setModal(null);
+            closeTags();
           }}
         />
       )}

@@ -114,8 +114,8 @@
   border-radius: 999px;
   background: var(--glass-bg);
   border: 1px solid var(--border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
   font-size: 0.72rem;
   color: var(--muted);
 }
@@ -136,8 +136,8 @@
   border-radius: 10px;
   background: var(--glass-bg);
   border: 1px solid var(--border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
   color: var(--text);
   font-size: 0.82rem;
   font-weight: 600;
@@ -170,8 +170,8 @@
   border-radius: 12px;
   background: var(--glass-bg);
   border: 1px solid var(--border);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
   animation: cardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
   transition: border-color 0.25s;
 }
@@ -280,8 +280,8 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 1.25rem 1.5rem;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: var(--mat-regular) saturate(140%);
+  backdrop-filter: var(--mat-regular) saturate(140%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
@@ -346,6 +346,52 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+/* Two panels rather than a switch, so each option can carry its consequence in
+   plain words instead of hiding it behind a label. */
+.visibility-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.visibility-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.15rem 0.45rem;
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.visibility-option:hover {
+  border-color: var(--accent);
+}
+
+.visibility-option.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+}
+
+.visibility-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.visibility-hint {
+  grid-column: 2;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
 .panel-footer {
   display: flex;
   align-items: center;
@@ -399,7 +445,9 @@
 /* ── Cards grid ──────────────────────────────────────── */
 .rooms-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* min() so the track can go under 300px: the container leaves ~295px at a
+     375px viewport, and a hard 300px floor overflowed the page sideways. */
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 1.1rem;
 }
 
@@ -413,8 +461,8 @@
   background: var(--glass-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: var(--mat-regular) saturate(140%);
+  backdrop-filter: var(--mat-regular) saturate(140%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
   animation: cardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -514,11 +562,25 @@
 }
 
 .card-badge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* Private is the default and stays quiet; public is the one worth spotting. */
+.card-badge-label--public {
+  color: var(--accent);
+}
+
+/* Full borrows the same label so it reads as part of that line, not a second
+   badge system — it's just the one state that should stop you short. */
+.card-badge-label--full {
+  color: var(--danger);
 }
 
 .card-delete-btn {
@@ -528,15 +590,22 @@
   cursor: pointer;
   padding: 0.4rem;
   border-radius: 8px;
-  opacity: 0;
-  transform: translateY(-3px);
   transition: color 0.2s, background 0.2s, opacity 0.25s, transform 0.25s;
 }
 
-.room-card:hover .card-delete-btn,
-.card-delete-btn:focus-visible {
-  opacity: 1;
-  transform: translateY(0);
+/* Reveal-on-hover only where hover exists. On touch it left an invisible but
+   fully tappable "Terminate Room" trigger sitting in the card header. */
+@media (hover: hover) and (pointer: fine) {
+  .card-delete-btn {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  .room-card:hover .card-delete-btn,
+  .card-delete-btn:focus-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card-delete-btn:hover {
@@ -588,6 +657,14 @@
   animation-delay: calc(var(--d, 0) * 0.35s);
 }
 
+/* A taken seat is solid with a halo; an open one keeps the translucent fill
+   above. Same pulse and same --d delay either way, so the row still breathes as
+   one row — only the fill says who's actually in there. */
+.seat-dot--taken {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
 @keyframes seatPulse {
   0%, 100% { opacity: 0.45; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.25); }
@@ -603,10 +680,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* `flex-end`, not `space-between`, because a non-creator's card has Connect and
+   nothing else — it would otherwise sit alone at the far left. The creator's
+   card is unaffected: .code-regen-btn's auto margin absorbs the free space, and
+   justify-content has no say once it does. */
 .card-bottom {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.5rem;
   margin-top: auto;
   padding-top: 0.9rem;
@@ -664,6 +745,29 @@
   color: #10b981;
 }
 
+/* Sits with the code it replaces; `margin-right: auto` eats the free space so
+   the pair stays left and Connect stays right. */
+.code-regen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: auto;
+  padding: 0.4rem;
+  min-height: 34px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.code-regen-btn:hover {
+  color: var(--accent);
+  border-color: var(--border);
+  background: var(--surface);
+}
+
 .join-action-btn {
   display: inline-flex;
   align-items: center;
@@ -690,6 +794,22 @@
   transform: scale(0.96);
 }
 
+/* A full room de-emphasises Connect rather than disabling it — the count can be
+   stale, so this is a warning, and the real capacity check happens on connect.
+   Still fully clickable, and it lights back up on hover to say so. */
+.join-action-btn.is-full {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.join-action-btn.is-full:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: none;
+}
+
 /* ── Empty state ─────────────────────────────────────── */
 .rooms-empty-state {
   display: flex;
@@ -700,8 +820,8 @@
   background: var(--glass-bg);
   border: 1px dashed var(--border);
   border-radius: 16px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
   animation: cardIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -737,7 +857,8 @@
     align-items: flex-start;
     flex-direction: column;
   }
-  .panel-grid {
+  .panel-grid,
+  .visibility-choice {
     grid-template-columns: 1fr;
   }
   .panel-footer {
@@ -746,6 +867,31 @@
   }
   .quickjoin-label {
     display: none;
+  }
+
+  /* Card actions sit at 34px — under the ~44px a fingertip needs. */
+  .code-copy-btn,
+  .code-regen-btn,
+  .join-action-btn,
+  .card-delete-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Every lift on this page sticks after a tap on touch — there is no pointer to
+   move away. The :active rules above are the press feedback that replaces them.
+   (Same treatment as .rail-item in styles/responsive.css.) */
+@media (hover: none) {
+  .room-card:hover,
+  .room-card:hover .card-badge-icon,
+  .rooms-admin-toggle:hover,
+  .quickjoin-btn:hover:not(:disabled),
+  .quickjoin-btn:hover:not(:disabled) svg,
+  .rooms-submit-btn:hover,
+  .code-copy-btn:hover,
+  .join-action-btn:hover {
+    transform: none;
   }
 }
 
@@ -787,4 +933,42 @@
 @keyframes skShimmer {
   from { background-position: 200% 0; }
   to   { background-position: -200% 0; }
+}
+
+/* ── Confirm dialog + toasts ───────────────────────────── */
+/* The shell is the shared .rm-* modal (styles/modal.css); this is just its
+   one line of copy. */
+.rooms-confirm-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.rooms-confirm-text strong {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+/* The page's own error style already carries a bottom margin for the creator
+   panel; inside the modal body the padding covers it. */
+.rm-body .rooms-panel-error {
+  margin-bottom: 0;
+  margin-top: 0.75rem;
+}
+
+/* Pinned to the viewport, not the page: this list scrolls. */
+.rooms-toasts {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  pointer-events: none;
+  z-index: 600;
 }

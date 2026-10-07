@@ -1,0 +1,112 @@
+/* Shared modal shell (.rm-*).
+ *
+ * Lifted out of TasksPage.css when the Rooms page needed the same dialog for
+ * its regenerate/delete confirmation — two copies of this would drift. Only the
+ * shell lives here; page-specific size and footer modifiers (.rm-modal--sm,
+ * .rm-modal--rem, .rm-foot--split, …) stay with the page that uses them, and
+ * still win the cascade because page CSS loads after this file. */
+.rm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Enter and exit along the same path. `allow-discrete` lets the overlay keep
+     animating while `display` flips, so closing isn't an instant vanish. */
+  transition: opacity 0.22s var(--ios-ease), display 0.22s allow-discrete;
+}
+
+@starting-style {
+  .rm-overlay { opacity: 0; }
+}
+
+/* `display: none` is restated because the transition needs the discrete
+   display change to animate. */
+.rm-overlay[hidden] {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rm-modal {
+  background: var(--surface);
+  border: 1px solid var(--layout-border);
+  border-radius: 8px;
+  width: 340px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Scale out of the chip that opened it: the modal is centred, so 50% of its
+     own box is the viewport centre and --rm-ox/oy offset from there. */
+  transform-origin: calc(50% + var(--rm-ox, 0px)) calc(50% + var(--rm-oy, 0px));
+  transition: opacity 0.22s var(--ios-ease), transform 0.22s var(--ios-ease);
+}
+
+@starting-style {
+  .rm-modal { opacity: 0; transform: scale(0.9); }
+}
+
+.rm-overlay[hidden] .rm-modal { opacity: 0; transform: scale(0.9); }
+
+.rm-head {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--layout-border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rm-body {
+  padding: 1rem;
+}
+
+.rm-foot {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--layout-border);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rm-foot-div {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  align-self: center;
+}
+
+.rm-cancel, .rm-set {
+  flex: 1;
+  padding: 0.45rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.rm-cancel {
+  background: var(--border);
+  color: var(--text);
+}
+
+.rm-set {
+  background: var(--accent);
+  color: #fff;
+}
+
+.rm-set:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Destructive confirm (regenerate code / delete room) — same button, red. */
+.rm-set--danger {
+  background: var(--danger);
+}

@@ -2,7 +2,10 @@
 
 body {
   margin: 0;
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  /* Shorthand pins the base leading on body instead of leaning on Tailwind
+     preflight's html rule, so unstyled blocks can't fall back to the browser
+     default (~1.2). Resets weight/style to normal, which is what they were. */
+  font: 100%/1.5 'Outfit', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -10,4 +13,86 @@ body {
 :focus-visible {
   outline: 2px solid var(--brand, #f5c518);
   outline-offset: 2px;
+}
+
+/* Dark-theme scrollbar everywhere -- the browser default is a bright system
+   scrollbar that reads as a UI bug against this app's near-black surfaces. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: padding-box;
+}
+
+/* ---- Shared press feedback. Hover doesn't exist on touch, so every
+   interactive surface also confirms on pointer-down. ---- */
+.rail-item:active, .theme-card-thumb:active, .themes-tab:active,
+.t2-menu-item:active, .theme-card-fav:active, .pomo-expand-chip:active,
+.rm-day:active, .rm-pill:active, .rm-rep:active, .rm-set:active, .rm-cancel:active,
+.tg-row:active,
+.rc-ctrl:active, .rc-strip-item:active, .rc-view-toggle button:active,
+.rc-grid .vtile:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
+}
+
+/* ---- iOS Safari zooms in on any field under 16px and never zooms back out.
+   On the fixed-position pages (.rc, .tasks2) there is nothing to scroll, so the
+   user is simply stuck. !important because every one of these fields is styled
+   by a class selector, which outranks a bare `input` rule no matter the order. */
+@media (max-width: 900px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* ---- Reduced transparency: drop the glass for an opaque surface.
+   !important because this file is bundled before the component styles that
+   set the blur, and some of those selectors are more specific. ---- */
+@media (prefers-reduced-transparency: reduce) {
+  .rail, .themes-panel, .pomo-widget, .pomo-expand, .tasks2-list, .tasks2-detail {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: var(--surface) !important;
+  }
+  /* The modal scrim drops its blur too, but stays a scrim: an opaque --surface
+     here would swallow the modal sitting on top of it. */
+  .rm-overlay {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+  }
+}
+
+/* ---- Reduced motion, applied globally so the files that ship keyframes
+   without their own block are covered too. Duration is collapsed rather than
+   the animation removed, so `animationend` handlers still fire. ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    /* Collapse the delays too, or staggered entrances still play out in full:
+       a backwards fill holds the element hidden until its delay elapses. */
+    animation-delay: -1ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+  /* Keep the opacity change that carries meaning; drop the travel. */
+  .themes-panel, .pomo-expand, .content-area, .rail { transform: none !important; }
 }

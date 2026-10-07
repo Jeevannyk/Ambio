@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MagnifyingGlass, Heart, Sparkle, Check } from '@phosphor-icons/react';
+import { useCloudPref } from '../hooks/useCloudPref';
 
 const FAV_KEY = 'react-todo-app.favoriteThemes';
 
@@ -19,8 +20,7 @@ function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
   useEffect(() => {
     localStorage.setItem(FAV_KEY, JSON.stringify(favs));
   }, [favs]);
-
-  if (!open) return null;
+  useCloudPref('themes.favorites', favs, setFavs);
 
   const toggleFav = (id) =>
     setFavs((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
@@ -34,7 +34,7 @@ function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
   const active = scenes[activeIndex];
 
   return (
-    <aside className="themes-panel" aria-label="Theme selector">
+    <aside className="themes-panel" aria-label="Theme selector" hidden={!open}>
       {/* Header Tabs */}
       <div className="themes-tabs-header">
         <div className="themes-tabs">
@@ -89,7 +89,9 @@ function SceneSelector({ scenes, activeIndex, onSelect, open, onClose }) {
                     aria-pressed={isActive}
                     aria-label={`Switch to ${scene.label}`}
                   >
-                    <video src={scene.srcs[0]} muted playsInline preload="metadata" tabIndex={-1} />
+                    {/* The panel now stays mounted, so don't fetch thumbnail
+                        metadata until it has actually been opened. */}
+                    <video src={scene.srcs[0]} muted playsInline preload={open ? 'metadata' : 'none'} tabIndex={-1} />
 
                     {/* Active Overlay Check Indicator */}
                     {isActive && (

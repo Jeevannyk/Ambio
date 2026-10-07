@@ -10,6 +10,7 @@ import YouTubePlayer from './components/YouTubePlayer';
 import PomodoroWidget from './components/PomodoroWidget';
 import NotFoundPage from './pages/NotFoundPage';
 import { usePomodoro } from './hooks/usePomodoro';
+import { useReminders } from './hooks/useReminders';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { isAuthRoute } from './lib/auth';
 import './styles/cursor.css';
@@ -19,6 +20,8 @@ import './styles/todo-card.css';
 import './styles/themes-panel.css';
 import './styles/background.css';
 import './styles/overlays.css';
+import './styles/modal.css';
+import './styles/toast.css';
 import './styles/myroom.css';
 import './styles/pomodoro.css';
 import './styles/responsive.css';
@@ -173,6 +176,7 @@ function App() {
   const [cursorEnabled, setCursorEnabled] = useState(() => localStorage.getItem('ambio.cursor') !== 'off');
   const [cursorMotionOk] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const pomodoro = usePomodoro();
+  const reminders = useReminders();
 
   // The app is dark-only; the attribute stays so body[data-theme='dark']
   // selectors keep matching (tokens default to the dark palette anyway).
@@ -196,6 +200,8 @@ function App() {
           onToggleThemes={() => setThemesOpen((v) => !v)}
           musicOpen={playerOpen}
           onToggleMusic={() => setPlayerOpen((v) => !v)}
+          remindersMuted={reminders.muted}
+          onToggleReminders={reminders.toggleMuted}
         />
 
         <ContentArea>
@@ -204,7 +210,7 @@ function App() {
               <Route path="/login" element={<AuthPage />} />
               <Route path="/signup" element={<AuthPage />} />
               <Route path="/" element={<RequireAuth><WelcomePage /></RequireAuth>} />
-              <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
+              <Route path="/tasks" element={<RequireAuth><TasksPage reminders={reminders} /></RequireAuth>} />
               <Route path="/my-room" element={<RequireAuth><MyRoomPage pomodoro={pomodoro} /></RequireAuth>} />
               <Route path="/rooms" element={<RequireAuth><RoomsPage /></RequireAuth>} />
               <Route path="/rooms/:id" element={<RequireAuth><RoomCall pomodoro={pomodoro} /></RequireAuth>} />

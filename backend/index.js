@@ -3,10 +3,11 @@
  *
  * LiveKit access tokens are JWTs signed with your API secret, so they MUST be
  * minted on a server — never in the browser (the secret can't ship to clients).
- * This tiny Express app does three jobs:
+ * This tiny Express app does four jobs:
  *   1. GET  /api/token -> mints a join token for a room + returns the LiveKit URL
  *   2. POST /api/kick  -> host-only, authoritative removal of a participant
- *   3. serves the built Vite frontend (dist/) so it's a single Render service
+ *   3. GET  /api/rooms/occupancy -> live participant counts for named rooms
+ *   4. serves the built Vite frontend (dist/) so it's a single Render service
  *
  * The API endpoints are protected: the caller must present a valid Supabase
  * session (Authorization: Bearer <access_token>) and is rate-limited per IP, so
@@ -19,6 +20,8 @@
  *   LIVEKIT_API_SECRET  LiveKit Cloud API secret
  *   LIVEKIT_URL         wss://<your-project>.livekit.cloud
  *   VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY  (reused to verify the caller)
+ *   SUPABASE_SERVICE_ROLE_KEY  server-only secret, used to resolve a single
+ *                              room by id past RLS (see findRoom)
  */
 const path = require('path');
 // .env lives at the repo root so both halves can share it, regardless of the
@@ -43,7 +46,36 @@ const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } })
   : null;
 
+// Service-role client. This key bypasses Row Level Security completely, so it
+// is server-only and is used for exactly one thing — see findRoom() below.
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+  : null;
+
+// Supabase is configured but the service-role key isn't: findRoom() then has no
+// way to resolve a room. Falling back to the caller-scoped client would look
+// like it works while quietly breaking join-by-code for everyone who isn't the
+// room's creator (the rooms SELECT policy is creator-only — see
+// supabase/migrations/0002_rooms_owner.sql), so the endpoints 500 instead.
+const ROOM_LOOKUP_READY = !supabase || !!supabaseAdmin;
+
+// A missing or typo'd Supabase config makes requireUser() fall through to its
+// { id: 'dev' } bypass, i.e. /api/token hands a real, signed LiveKit token to
+// any anonymous caller. That bypass is deliberate for local dev (it's what lets
+// `npm run server` work with no .env at all) and indefensible in a deployment,
+// so a deployed instance refuses to boot rather than degrade silently.
+//
+// RENDER is set automatically on every Render service, so it holds even if
+// someone drops an env var; NODE_ENV is set explicitly in render.yaml as a
+// second, independent signal. Either one is enough.
+const IS_DEPLOYED = !!process.env.RENDER || process.env.NODE_ENV === 'production';
+
 if (!supabase) {
+  if (IS_DEPLOYED) {
+    console.error('[ambio] FATAL: Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Refusing to start — without it /api/token would mint a LiveKit token for any unauthenticated caller.');
+    process.exit(1);
+  }
   console.warn('[ambio] Supabase not configured — /api/token will NOT require auth. Set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY to lock it down.');
 }
 
@@ -104,17 +136,36 @@ async function requireUser(req, res) {
   return data.user;
 }
 
-// Look the room up in Supabase AS THE CALLER (their access token is forwarded,
-// so the rooms table's RLS applies). Returns the row, or null if it doesn't
-// exist / they can't see it — either way we refuse to mint a grant for it.
-async function findRoom(id, accessToken) {
-  if (!supabase) return { id, name: id }; // local dev without Supabase
-  const asCaller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-  const { data } = await asCaller.from('rooms').select('id, name, max').eq('id', id).maybeSingle();
-  return data || null;
+// Resolve ONE room by its id, using the service-role client so RLS does not
+// apply. That is deliberate: the rooms table's SELECT policy is "creator only"
+// (supabase/migrations/0002_rooms_owner.sql), which governs who may BROWSE the
+// room list — not who may join a room whose code they were handed. By the time
+// we get here the caller has proven they're a signed-in user (requireUser) and
+// is naming one specific room id, which is enough to resolve that single row.
+//
+// supabaseAdmin must NEVER serve a list/browse query — only single-room lookups
+// keyed by an id the request itself already carries. Anything broader would
+// hand every room's private code to every caller, which is the exact bug the
+// creator-only policy exists to fix.
+//
+// Returns { room } — the row, or null if it doesn't exist; either way we refuse
+// to mint a grant for it. A query that FAILED comes back as { error } instead,
+// and must not be flattened into the same "no such room" answer: this function
+// used to discard the error, so a service-role key that couldn't read the table
+// at all was indistinguishable from a typo'd room code, and every join 404'd
+// with "Room not found" while the row sat there perfectly intact.
+//
+// The likeliest cause of an error here is `42501 permission denied for table
+// rooms`: RLS is not the only gate, the role also needs a plain table GRANT
+// (supabase/migrations/0003_rooms_grants.sql).
+async function findRoom(id) {
+  if (!supabase) return { room: { id, name: id } }; // local dev without Supabase
+  const { data, error } = await supabaseAdmin.from('rooms').select('id, name, max').eq('id', id).maybeSingle();
+  if (error) {
+    console.error(`[ambio] rooms lookup failed (${error.code}): ${error.message}${error.hint ? ` — ${error.hint}` : ''}`);
+    return { error };
+  }
+  return { room: data || null };
 }
 
 // The host is the earliest joiner — the same rule the browsers use for the
@@ -136,6 +187,9 @@ app.get('/api/token', async (req, res) => {
   if (!LIVEKIT_READY) {
     return res.status(500).json({ error: 'LiveKit env not configured (LIVEKIT_API_KEY / LIVEKIT_API_SECRET / LIVEKIT_URL)' });
   }
+  if (!ROOM_LOOKUP_READY) {
+    return res.status(500).json({ error: 'Supabase env not configured (SUPABASE_SERVICE_ROLE_KEY)' });
+  }
   if (!room) {
     return res.status(400).json({ error: 'room query param is required' });
   }
@@ -148,7 +202,9 @@ app.get('/api/token', async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return; // 401 already sent
 
-  const found = await findRoom(room, bearer(req));
+  const lookup = await findRoom(room);
+  if (lookup.error) return res.status(500).json({ error: 'could not look up the room — see server logs' });
+  const found = lookup.room;
   if (!found) return res.status(404).json({ error: 'room not found' });
 
   try {
@@ -167,7 +223,10 @@ app.get('/api/token', async (req, res) => {
       canPublishData: true,
     });
     const token = await at.toJwt();
-    res.json({ token, url: LIVEKIT_URL });
+    // name/max ride along so the browser can show the room without querying the
+    // rooms table itself — under the creator-only SELECT policy that query
+    // returns nothing for everyone but the creator.
+    res.json({ token, url: LIVEKIT_URL, name: found.name, max: found.max });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -179,6 +238,9 @@ app.get('/api/token', async (req, res) => {
 app.post('/api/kick', express.json({ limit: '1kb' }), async (req, res) => {
   if (!roomService) {
     return res.status(500).json({ error: 'LiveKit env not configured (LIVEKIT_API_KEY / LIVEKIT_API_SECRET / LIVEKIT_URL)' });
+  }
+  if (!ROOM_LOOKUP_READY) {
+    return res.status(500).json({ error: 'Supabase env not configured (SUPABASE_SERVICE_ROLE_KEY)' });
   }
 
   const room = clean(req.body?.room, 64);
@@ -195,7 +257,9 @@ app.post('/api/kick', express.json({ limit: '1kb' }), async (req, res) => {
   const user = await requireUser(req, res);
   if (!user) return; // 401 already sent
 
-  const found = await findRoom(room, bearer(req));
+  const lookup = await findRoom(room);
+  if (lookup.error) return res.status(500).json({ error: 'could not look up the room — see server logs' });
+  const found = lookup.room;
   if (!found) return res.status(404).json({ error: 'room not found' });
 
   try {
@@ -205,6 +269,59 @@ app.post('/api/kick', express.json({ limit: '1kb' }), async (req, res) => {
     }
     await roomService.removeParticipant(String(found.id), target);
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// One Rooms page shows a handful of cards, so this is far past what an honest
+// caller needs — it's here so nobody can hand us a thousand ids in one request.
+const MAX_OCCUPANCY_IDS = 24;
+
+// Live participant counts, so the Rooms list can say "3 / 6 seats" and flag a
+// full room before someone walks into it. Only a server can read this: the
+// count comes from LiveKit's admin API, which needs the secret — the same
+// reason /api/kick exists instead of a direct client call.
+//
+// Scoped to exactly the ids the caller names; it deliberately never dumps every
+// active room. That's the same line findRoom() draws — a signed-in caller
+// naming ids is fine, a caller fishing for what exists is not — and in practice
+// you only have ids your own Rooms list already handed you.
+//
+// No Supabase here, so ROOM_LOOKUP_READY doesn't apply: an id that isn't a real
+// room just comes back with no count, which is what an empty room looks like
+// anyway.
+app.get('/api/rooms/occupancy', async (req, res) => {
+  if (!roomService) {
+    return res.status(500).json({ error: 'LiveKit env not configured (LIVEKIT_API_KEY / LIVEKIT_API_SECRET / LIVEKIT_URL)' });
+  }
+
+  const ids = clean(req.query.ids, 1024)
+    .split(',')
+    .map((id) => clean(id, 64))
+    .filter(Boolean)
+    .slice(0, MAX_OCCUPANCY_IDS);
+  if (!ids.length) {
+    return res.status(400).json({ error: 'ids query param is required' });
+  }
+
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  if (rateLimited(ip)) {
+    return res.status(429).json({ error: 'too many requests, slow down' });
+  }
+
+  const user = await requireUser(req, res);
+  if (!user) return; // 401 already sent
+
+  try {
+    // listRooms(names) filters server-side and returns one Room per *live*
+    // room, carrying numParticipants. A room nobody is in doesn't exist on
+    // LiveKit at all, so it simply won't come back — the response only holds
+    // rooms with someone in them, and a missing key means zero.
+    const live = await roomService.listRooms(ids);
+    const counts = {};
+    for (const r of live) counts[r.name] = Number(r.numParticipants) || 0;
+    res.json(counts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -7,6 +7,8 @@ import {
   VideoCamera,
   PaintBrush,
   MusicNotes,
+  Bell,
+  BellSlash,
   SignOut,
 } from '@phosphor-icons/react';
 import { useAuth } from '../lib/AuthContext';
@@ -19,7 +21,7 @@ const NAV = [
   { to: '/rooms',   label: 'Rooms',   icon: VideoCamera },
 ];
 
-function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
+function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic, remindersMuted, onToggleReminders }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { user, signOut } = useAuth();
@@ -70,6 +72,18 @@ function Sidebar({ themesOpen, onToggleThemes, musicOpen, onToggleMusic }) {
         >
           <MusicNotes size={22} weight="duotone" />
           <span className="rail-item-label">Music</span>
+        </button>
+
+        {/* Reminder chimes need a kill switch that's reachable mid-call, not
+            only from the task page that set them. */}
+        <button
+          className="rail-item"
+          onClick={onToggleReminders}
+          title={remindersMuted ? 'Reminder sound off' : 'Reminder sound on'}
+          aria-pressed={!remindersMuted}
+        >
+          {remindersMuted ? <BellSlash size={22} weight="duotone" /> : <Bell size={22} weight="duotone" />}
+          <span className="rail-item-label">{remindersMuted ? 'Muted' : 'Alerts'}</span>
         </button>
 
         {user && (

@@ -1,0 +1,22 @@
+/* Shared transient toast (.rc-toast).
+ *
+ * Lifted out of RoomCall.css when the Rooms page needed the same confirmation
+ * pill for "room created". The class keeps its rc- name so the room call's
+ * markup is unchanged; each page supplies its own positioned container
+ * (.rc-toasts in the call, .rooms-toasts on the rooms page). */
+.rc-toast {
+  background: rgba(17, 20, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  backdrop-filter: var(--mat-thin);
+  animation: toastIn 0.25s ease-out;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -14,12 +14,23 @@ services:
     buildCommand: npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend
     startCommand: node backend/index.js
     envVars:
+      # Tells backend/index.js it's a real deployment, so it refuses to boot
+      # without Supabase instead of falling back to the dev auth bypass. Render
+      # also sets RENDER=true automatically; the server accepts either signal,
+      # so dropping one of them can't quietly re-open the bypass.
+      - key: NODE_ENV
+        value: production
       # Server-side (LiveKit token minting) — never shipped to the browser.
       - key: LIVEKIT_API_KEY
         sync: false
       - key: LIVEKIT_API_SECRET
         sync: false
       - key: LIVEKIT_URL
+        sync: false
+      # Supabase service_role key — bypasses RLS, so it is SERVER-ONLY. Never
+      # give it a VITE_ prefix: that would inline it into the browser bundle
+      # and hand every visitor full read/write on the database.
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       # Frontend (VITE_*) — inlined at BUILD time, so they MUST be set here or
       # the production bundle ships with no Supabase keys and login silently

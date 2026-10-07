@@ -20,8 +20,8 @@
   align-items: center;
   gap: 0.65rem;
   background: var(--glass-bg);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: var(--mat-thick);
+  backdrop-filter: var(--mat-thick);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.38rem 0.45rem;
@@ -145,16 +145,11 @@
 .pomo-widget-btn:active { transform: scale(0.93); }
 
 /* ── Expanded panel ───────────────────────────────────── */
-@keyframes expandPop {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0)   scale(1);    }
-}
-
 .pomo-expand {
   position: relative;
   background: var(--glass-bg);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: var(--mat-thick);
+  backdrop-filter: var(--mat-thick);
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 1.1rem 1.2rem 1.2rem;
@@ -166,7 +161,28 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 28px 60px -20px rgba(0, 0, 0, 0.6);
-  animation: expandPop 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Grows out of the compact pill, which sits directly below it in the wrap. */
+  transform-origin: bottom left;
+  /* Enter and exit along the same path. `allow-discrete` lets the panel keep
+     animating while `display` flips, so closing isn't an instant vanish. */
+  transition: opacity .35s cubic-bezier(0.22, 1, 0.36, 1),
+              transform .35s cubic-bezier(0.22, 1, 0.36, 1),
+              display .35s allow-discrete;
+}
+
+@starting-style {
+  .pomo-expand {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+}
+
+/* `display: none` is restated (and outranks the rule above) because the
+   transition needs the discrete display change to animate. */
+.pomo-expand[hidden] {
+  display: none;
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
 }
 
 /* header row */
@@ -204,6 +220,12 @@
   color: var(--text);
   transform: rotate(90deg);
 }
+/* Press feedback stacks on the hover rotation rather than cancelling it, so
+   this one can't live in the shared :active block in index.css. */
+.pomo-expand-close:active {
+  transform: rotate(90deg) scale(0.97);
+  transition: transform 100ms ease-out;
+}
 
 /* big conic ring */
 .pomo-expand-ring-wrap {
@@ -232,8 +254,8 @@
   height: 116px;
   border-radius: 50%;
   background: var(--glass-bg);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
   align-items: center;

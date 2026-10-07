@@ -16,6 +16,14 @@
   --danger: #f87171;
   --glass-bg: rgba(15, 20, 35, 0.72);
   --glass-border: rgba(255, 255, 255, 0.1);
+  /* Material scale — one blur recipe per surface depth, so structural
+     surfaces stop each picking their own arbitrary radius.
+     Write -webkit-backdrop-filter BEFORE the unprefixed property at every
+     site: Lightning CSS keeps only the last declaration of the pair and
+     drops the standard one, which costs Firefox the glass entirely. */
+  --mat-thin: blur(8px);
+  --mat-regular: blur(16px);
+  --mat-thick: blur(28px) saturate(140%);
   --z-base: 1;
   --z-panel: 40;
   --z-overlay: 80;

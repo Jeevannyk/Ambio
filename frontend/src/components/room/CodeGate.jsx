@@ -3,8 +3,11 @@ import { ArrowLeft, Key } from '@phosphor-icons/react';
 
 /*
  * Code gate: every room requires its code to be typed before entering.
- * The code IS the room's connection key (no backend), so typing the right
- * code is what lets you reach the host's peer.
+ * This check is client-side only — the server hands out a join pass to any
+ * signed-in caller who names a room id (see fetchRoomPass), so this is a
+ * courtesy step for someone who arrived without going through Rooms/Quick
+ * Join, not a security boundary. The real boundary is who the creator gave
+ * the code to (supabase/migrations/0002_rooms_owner.sql).
  */
 function CodeGate({ roomName, expected, onVerified, onBack }) {
   const [code, setCode] = useState('');

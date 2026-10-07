@@ -211,8 +211,8 @@
   background: transparent;
   border: none;
   box-shadow: none;
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   /* Float over the video so the stage fills the whole height (bigger video).
      The video never resizes — only the bar fades on idle. */
   position: absolute;
@@ -275,8 +275,8 @@
   letter-spacing: 0.05em;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 .rc-status::before {
@@ -288,7 +288,25 @@
 }
 
 .rc-status--live { color: #34d399; background: rgba(52, 211, 153, 0.12); }
-.rc-status--connecting { color: #fbbf24; background: rgba(251, 191, 36, 0.12); }
+.rc-status--connecting,
+.rc-status--reconnecting { color: #fbbf24; background: rgba(251, 191, 36, 0.12); }
+
+/* Degraded-but-still-connected. Without it, a stalled 5G link looks exactly
+   like a working room with a frozen picture. */
+.rc-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.18);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
+}
 
 .rc-host-badge {
   display: inline-flex;
@@ -300,8 +318,8 @@
   background: rgba(251, 191, 36, 0.18);
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 .rc-timer {
@@ -312,8 +330,8 @@
   border: 1px solid rgba(59, 130, 246, 0.4);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 /* Host's timer doubles as a play/pause control. */
@@ -513,8 +531,8 @@
   display: flex;
   flex-direction: column;
   background: rgba(17, 20, 26, 0.55);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: var(--mat-regular);
+  backdrop-filter: var(--mat-regular);
 }
 
 .rc-panel-head {
@@ -691,8 +709,8 @@
   background: transparent;
   border: none;
   box-shadow: none;
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   flex-wrap: wrap;
   /* Float over the bottom of the video instead of taking layout space. */
   position: absolute;
@@ -826,8 +844,8 @@
   border-radius: 8px;
   padding: 3px;
   gap: 2px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: var(--mat-thin);
+  backdrop-filter: var(--mat-thin);
 }
 
 .rc-view-toggle button {
@@ -900,7 +918,14 @@
 
 .rc-strip-item:hover {
   border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
+}
+
+/* The lift has nowhere to go on touch — it just sticks after the tap. The
+   shared :active press feedback in index.css covers that case instead. */
+@media (hover: hover) and (pointer: fine) {
+  .rc-strip-item:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .rc-strip-item--pinned {
@@ -925,7 +950,8 @@
   font-size: 0.62rem;
 }
 
-/* Join / leave toasts */
+/* Join / leave toasts — the pill itself is in styles/toast.css (shared with
+   the Rooms page); this is just where they stack. */
 .rc-toasts {
   position: absolute;
   top: 1rem;
@@ -937,23 +963,6 @@
   align-items: center;
   pointer-events: none;
   z-index: 5;
-}
-
-.rc-toast {
-  background: rgba(17, 20, 26, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.4rem 0.85rem;
-  border-radius: 999px;
-  backdrop-filter: blur(8px);
-  animation: toastIn 0.25s ease-out;
-}
-
-@keyframes toastIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Leave confirmation popover */
@@ -1090,13 +1099,67 @@
   }
 }
 
-/* The nav rail is a bottom bar at this width (see styles/responsive.css):
-   clear its height instead of its old left edge. */
-@media (max-width: 600px) {
+/* The nav rail is a bottom bar at this size (see styles/responsive.css): clear
+   its height instead of its old left edge. Must stay in lockstep with that
+   file's trigger, or these fixed panes offset for a rail that isn't there. */
+@media (max-width: 900px), (max-height: 500px) {
   .prejoin,
   .rc,
   .rc-error {
     left: 0;
     bottom: var(--rail-h, 0px);
+  }
+}
+
+/* ── Phone widths ─────────────────────────────────────────────────────
+   Matches useNarrowViewport() in RoomCall.jsx — the column count and the
+   timer's placement are decided there and have to agree with this block. */
+@media (max-width: 600px) {
+  /* Title + toggle + timer don't fit in one header row at 375px, and the timer
+     was the piece that ran off the edge. Icon-only toggle, and the timer moves
+     onto the stage (see .rc-timer--float). */
+  .rc-view-toggle button span {
+    display: none;
+  }
+
+  .rc-view-toggle button {
+    padding: 0.35rem 0.5rem;
+  }
+
+  .rc-timer--float {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    z-index: 6;
+  }
+
+  /* Equal-fraction rows squeeze a 16:9 feed into a tall sliver at this width,
+     and object-fit: cover then crops the sides off every face. Let the tiles
+     keep their shape and let the grid scroll instead of stretching. */
+  .rc-grid {
+    height: auto;
+    max-height: 100%;
+    align-content: start;
+    grid-auto-rows: auto;
+    overflow-y: auto;
+  }
+
+  .rc-grid .vtile {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* ~232px wide and centred on its own button, so with the control bar wrapped
+     to two rows it clipped off the edge. Anchor the popovers to the bar — which
+     spans the viewport — instead of to the button. */
+  .rc-ctrl-wrap {
+    position: static;
+  }
+
+  .rc-emoji-pop {
+    left: 0.5rem;
+    right: 0.5rem;
+    transform: none;
+    justify-content: center;
   }
 }

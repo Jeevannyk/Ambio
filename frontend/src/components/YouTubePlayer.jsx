@@ -3,6 +3,7 @@ import { SpeakerHigh, SpeakerLow, SpeakerX, Play, Pause, ArrowLeft, ArrowRight, 
 import { audioReactor } from '../audio/audioReactor';
 import AudioVisualizer from './audio/AudioVisualizer';
 import AudioReactiveGlow from './audio/AudioReactiveGlow';
+import { useCloudPref } from '../hooks/useCloudPref';
 import './YouTubePlayer.css';
 
 /*
@@ -77,6 +78,7 @@ function YouTubePlayer({ onCustomVideo, open, onToggleOpen }) {
   useEffect(() => {
     localStorage.setItem(LIKED_KEY, JSON.stringify(liked));
   }, [liked]);
+  useCloudPref('music.liked', liked, setLiked);
 
   // Drive the shared audio reactor from real YouTube playback state, so every
   // visualizer / ambient effect starts, freezes, and resumes with the music.

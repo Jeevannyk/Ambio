@@ -2,6 +2,8 @@
 
 A calm place to focus. Pick a cozy background (forest, ocean, city at night, rain), play some music, start a timer, and get your work done. You can also study together with friends in shared video rooms.
 
+**👉 [ambio.onrender.com](https://ambio.onrender.com) — just open it, no setup needed.**
+
 ## What you can do
 
 - **Set the mood** — full-screen video wallpapers, or paste your own YouTube video as the background.
@@ -12,6 +14,8 @@ A calm place to focus. Pick a cozy background (forest, ocean, city at night, rai
 - **Your own account** — sign up / log in so your stuff is saved.
 
 ## Run it on your computer
+
+(Only if you want to poke at the code or contribute — most people should just use [the live site](https://ambio.onrender.com) above.)
 
 You need [Node.js](https://nodejs.org) version 20 or newer installed.
 
